@@ -73,9 +73,6 @@ Item {
     }
   }
 
-  //
-  // Collapse logic — runs whenever width changes
-  //
   property bool _updating: false
 
   onWidthChanged: Qt.callLater(updateCollapse)
@@ -116,8 +113,6 @@ Item {
       return
     }
 
-    // Otherwise, figure out which to collapse by trying combinations.
-    // Sort by priority ascending (lowest priority collapses first).
     sections.sort(function(a, b) {
       return a.collapsePriority - b.collapsePriority
     })

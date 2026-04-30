@@ -244,9 +244,6 @@ SmartDialog {
         }
       }
 
-      //
-      // Right content area — WebEngineView
-      //
       Item {
         Layout.fillWidth: true
         Layout.fillHeight: true
@@ -324,7 +321,6 @@ SmartDialog {
             if (url.startsWith("qrc:"))
               return
 
-            // External link — open in browser
             if (url.startsWith("ext:")) {
               request.reject()
               Qt.openUrlExternally(url.substring(4))

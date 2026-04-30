@@ -33,7 +33,6 @@
  */
 IO::Drivers::Network::Network() : m_hostExists(false), m_udpMulticast(false), m_lookupActive(false)
 {
-  // Restore persisted settings
   // clang-format off
   auto socketType = m_settings.value("NetworkDriver/socketType", 0).toInt();
   auto remoteAddress = m_settings.value("NetworkDriver/address", "").toString();
@@ -81,8 +80,7 @@ IO::Drivers::Network::Network() : m_hostExists(false), m_udpMulticast(false), m_
  */
 void IO::Drivers::Network::close()
 {
-  // Disconnect both socket types — avoids duplicate readyRead after a
-  // socketType flip between open() and close().
+  // Disconnect both socket types to avoid duplicate readyRead after a socketType flip.
   disconnect(&m_tcpSocket, &QTcpSocket::readyRead, this, &IO::Drivers::Network::onReadyRead);
   disconnect(&m_udpSocket, &QUdpSocket::readyRead, this, &IO::Drivers::Network::onReadyRead);
 
@@ -478,7 +476,7 @@ void IO::Drivers::Network::lookupFinished(const QHostInfo& info)
  */
 void IO::Drivers::Network::onErrorOccurred(const QAbstractSocket::SocketError socketError)
 {
-  // Ignore UDP "port unreachable" — normal for fire-and-forget datagrams.
+  // Ignore UDP "port unreachable" (normal for fire-and-forget datagrams).
   if (socketType() == QAbstractSocket::UdpSocket
       && socketError == QAbstractSocket::ConnectionRefusedError) [[unlikely]]
     return;

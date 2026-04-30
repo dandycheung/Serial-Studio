@@ -68,7 +68,6 @@ UI::Dashboard::Dashboard()
   , m_pltXAxis(kDefaultPlotPoints)
   , m_multipltXAxis(kDefaultPlotPoints)
 {
-  // Reset dashboard when data sources open/close or project changes
   // clang-format off
   connect(&CSV::Player::instance(), &CSV::Player::openChanged, this, [=, this] { resetData(true); }, Qt::QueuedConnection);
   connect(&MDF4::Player::instance(), &MDF4::Player::openChanged, this, [=, this] { resetData(true); }, Qt::QueuedConnection);
@@ -122,7 +121,6 @@ UI::Dashboard::Dashboard()
     Qt::QueuedConnection);
 #endif
 
-  // Update the dashboard widgets at defined refresh rate
   connect(&Misc::TimerEvents::instance(), &Misc::TimerEvents::uiTimeout, this, [=, this] {
     if (m_updateRequired) {
       m_updateRequired = false;
@@ -841,7 +839,7 @@ void UI::Dashboard::setTerminalEnabled(const bool enabled)
   if (m_persistSettings)
     m_settings.setValue("Dashboard/TerminalEnabled", m_terminalEnabled);
 
-  // Use incremental update if we have an active dashboard with widgets
+  // Incremental update path: existing dashboard with widgets.
   if (!m_sourceRawFrames.isEmpty() && m_widgetCount > 0) {
     auto& registry = WidgetRegistry::instance();
     if (enabled) {
@@ -922,7 +920,7 @@ void UI::Dashboard::setNotificationLogEnabled(const bool enabled)
     m_settings.setValue("Dashboard/NotificationLogEnabled", m_notificationLogEnabled);
 
 #ifdef BUILD_COMMERCIAL
-  // Unlike Terminal, NotificationLog can be the only widget — only a live source frame is required
+  // Unlike Terminal, NotificationLog can be the only widget; a live source frame still required.
   if (!m_sourceRawFrames.isEmpty()) {
     auto& registry = WidgetRegistry::instance();
     if (enabled) {
@@ -1110,7 +1108,6 @@ void UI::Dashboard::hotpathRxFrame(const DataModel::TimestampedFramePtr& frame)
   const int sid             = payload.sourceId;
   const bool hadProFeatures = containsCommercialFeatures();
 
-  // Check if this source's frame structure changed
   const auto it               = m_sourceRawFrames.find(sid);
   const bool structureChanged = it == m_sourceRawFrames.end()
                              || !DataModel::compare_frames(payload, it.value())
@@ -1654,10 +1651,6 @@ void UI::Dashboard::updateLineSeries(int sourceId)
     if (sourceId >= 0 && yDataset.sourceId != sourceId)
       continue;
 
-    // Shift Y-axis points. Keyed by uniqueId rather than index so two plot
-    // datasets that share the same source-frame column (e.g. raw audio +
-    // transformed dB on the same input) get independent ring buffers — and
-    // so the per-dataset transform output reaches the right plot widget.
     if (!yAxesMoved.contains(yDataset.uniqueId)) {
       yAxesMoved.insert(yDataset.uniqueId);
       m_yAxisData[yDataset.uniqueId].push(yDataset.numericValue);
@@ -1785,9 +1778,7 @@ void UI::Dashboard::configureLineSeries()
       if (!d->plt)
         continue;
 
-      // Register Y-axis. Keyed by uniqueId so each plot dataset has its
-      // own buffer, independent of any sibling dataset that may share the
-      // same source-frame index but apply a different transform.
+      // Register Y-axis keyed by uniqueId so transformed siblings stay independent.
       DSP::AxisData yAxis(points() + 1);
       m_yAxisData.insert(d->uniqueId, yAxis);
       m_yAxisData[d->uniqueId].fill(0);

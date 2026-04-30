@@ -401,7 +401,7 @@ bool DataModel::ModbusMapImporter::parseXML(const QString& path)
     else if (tag_name == QLatin1String("register")) {
       const auto attrs = xml.attributes();
 
-      // Validate the address attribute — skip the element if missing or malformed
+      // Validate address attribute; skip the element if missing or malformed.
       bool addrOk              = false;
       const auto addrText      = attrs.value("address").toString();
       const quint16 addrParsed = addrText.toUShort(&addrOk);
@@ -478,7 +478,6 @@ bool DataModel::ModbusMapImporter::parseJSON(const QString& path)
     }
   }
 
-  // Grouped format: {"holdingRegisters": [...], "coils": [...], ...}
   // clang-format off
   static const struct { const char* key; int type; } groups[] = {
     {"holdingRegisters", 0}, {"holding_registers", 0}, {"holding", 0},
@@ -600,8 +599,7 @@ QJsonObject DataModel::ModbusMapImporter::buildProject() const
     DataModel::Group group;
     group.groupId = group_id;
     group.widget  = QStringLiteral("datagrid");
-    // Drop the "@ address" suffix when there is only one block — the address
-    // is redundant noise in a single-group project.
+    // Drop the "@ address" suffix for single-block projects to avoid redundant noise.
     if (blocks.size() == 1)
       group.title = registerTypeName(block.registerType);
     else

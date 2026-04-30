@@ -33,8 +33,6 @@
 #include "IO/ConnectionManager.h"
 #include "Misc/Utilities.h"
 
-// Monotonic counter for session IDs — avoids pointer-to-int casts which are
-// unsafe because addresses can be reused after socket deletion
 static QAtomicInteger<quintptr> s_nextSessionId{1};
 
 //--------------------------------------------------------------------------------------------------
@@ -607,7 +605,7 @@ void API::Server::broadcastLifecycleEvent(const QString& eventName)
 }
 
 //--------------------------------------------------------------------------------------------------
-// Server — data reception helpers
+// Server: data reception helpers
 //--------------------------------------------------------------------------------------------------
 
 /**
@@ -1094,7 +1092,7 @@ void API::Server::processRawLine(QTcpSocket* socket, ConnectionState& state, con
 }
 
 //--------------------------------------------------------------------------------------------------
-// Server — data reception & dispatch
+// Server: data reception & dispatch
 //--------------------------------------------------------------------------------------------------
 
 /**
@@ -1136,7 +1134,7 @@ void API::Server::onDataReceived(QTcpSocket* socket, const QByteArray& data)
 
     const int newlineIndex = buffer.indexOf('\n');
 
-    // No newline found — attempt to process partial buffer
+    // No newline found: attempt to process partial buffer.
     if (newlineIndex < 0) {
       processNoNewlineBuffer(socket, state);
       return;

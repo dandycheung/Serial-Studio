@@ -114,11 +114,6 @@ Widgets.SmartWindow {
     palette.placeholderText: Cpp_ThemeManager.colors["placeholder_text"]
     palette.highlightedText: Cpp_ThemeManager.colors["highlighted_text"]
 
-    //
-    // Editor body — always rendered so the lock/mode overlays have something
-    // to blur. Disabled when locked or when running outside ProjectFile mode
-    // so toolbar buttons can't be clicked through the overlay.
-    //
     ColumnLayout {
       id: layout
 
@@ -127,9 +122,6 @@ Widgets.SmartWindow {
       enabled: Cpp_AppState.operationMode === SerialStudio.ProjectFile
                && !Cpp_JSON_ProjectModel.locked
 
-      //
-      // Toolbar
-      //
       Sections.ProjectToolbar {
         id: toolbar
 
@@ -138,9 +130,6 @@ Widgets.SmartWindow {
         Layout.minimumWidth: 860
       }
 
-      //
-      // Main Layout — kept visible when locked; the lock overlay sits on top
-      //
       Widgets.PaneSplitter {
         id: splitter
 
@@ -159,12 +148,6 @@ Widgets.SmartWindow {
         }
 
         rightPanel: Component {
-          //
-          // Right panel — only the currently selected view is parsed and
-          // instantiated. Tab switches destroy the previous view and load the
-          // new one; views read all state from Cpp_JSON_ProjectModel /
-          // Cpp_JSON_ProjectEditor, so nothing local is lost on switch.
-          //
           Loader {
             asynchronous: false
             anchors.fill: parent
@@ -190,9 +173,6 @@ Widgets.SmartWindow {
       }
     }
 
-    //
-    // Lock + project mode-required overlay
-    //
     Item {
       id: editorOverlay
 
@@ -204,9 +184,6 @@ Widgets.SmartWindow {
       readonly property bool lockMode: Cpp_JSON_ProjectModel.locked
                                        && Cpp_AppState.operationMode === SerialStudio.ProjectFile
 
-      //
-      // Blur effect
-      //
       MultiEffect {
         blur: 1.0
         blurMax: 64
@@ -216,19 +193,12 @@ Widgets.SmartWindow {
         autoPaddingEnabled: false
       }
 
-      //
-      // Swallow clicks/wheel so the toolbar/splitter underneath stay quiet
-      //
       MouseArea {
         hoverEnabled: true
         anchors.fill: parent
         onWheel: function(wheel) { wheel.accepted = true }
       }
 
-      //
-      // Preserve native-style window drag on the opaque top strip — the
-      // toolbar's own DragHandler is unreachable while the overlay is up
-      //
       DragHandler {
         target: null
         onActiveChanged: {
@@ -237,9 +207,6 @@ Widgets.SmartWindow {
         }
       }
 
-      //
-      // Subtle gradient to transition into the window caption
-      //
       Rectangle {
         height: toolbar.height
         anchors {
@@ -261,11 +228,6 @@ Widgets.SmartWindow {
         }
       }
 
-      //
-      // Centered content — lock or mode-required call-to-action. Pushed
-      // down by half the titlebar height so it sits visually centered in
-      // the area the user perceives as the editor body.
-      //
       ColumnLayout {
         spacing: 16
         anchors.centerIn: parent

@@ -34,11 +34,6 @@ Rectangle {
   color: Cpp_ThemeManager.colors["groupbox_background"]
   border.color: Cpp_ThemeManager.colors["groupbox_border"]
 
-  //
-  // Create list of device panels. Reassignment (not push) is used so the
-  // `buses` property notifies, keeping width/height bindings live without
-  // a separate counter dependency hack.
-  //
   property var buses: []
   readonly property int kPaddingV: 8
   readonly property int kFadeHeight: 12
@@ -57,13 +52,6 @@ Rectangle {
     return maxW
   }
 
-  //
-  // Device configuration — wrapped in a Flickable so tall drivers (Modbus,
-  // BLE, CAN Bus…) can scroll vertically without stretching the whole pane.
-  // The Flickable fills the bordered rectangle; padding is supplied by the
-  // outer ColumnLayout's spacer items so scrolled content slides under the
-  // edge-fade gradients drawn on top.
-  //
   Flickable {
     id: scroll
 
@@ -231,12 +219,6 @@ Rectangle {
     }
   }
 
-  //
-  // Edge fades — masks content scrolling under the bordered edges with a
-  // small gradient from the pane background to transparent. Hidden when the
-  // user is at the corresponding scroll boundary so they don't dim the
-  // first / last items unnecessarily.
-  //
   Rectangle {
     z: 2
     visible: opacity > 0.01

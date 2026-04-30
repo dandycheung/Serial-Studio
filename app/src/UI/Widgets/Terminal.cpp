@@ -288,8 +288,7 @@ void Widgets::Terminal::renderAnsiSegment(QPainter* painter,
                                           int x,
                                           int y)
 {
-  // Coalesce consecutive characters with the same fg/bg color into runs,
-  // drawing each run with a single fillRect + drawText instead of per-char.
+  // Coalesce consecutive same-color chars into single fillRect + drawText runs.
   const auto& fm = painter->fontMetrics();
   int xPos       = x;
   int j          = 0;
@@ -1287,7 +1286,6 @@ void Widgets::Terminal::onThemeChanged()
  */
 void Widgets::Terminal::loadWelcomeGuide()
 {
-  // Define logo
   // clang-format off
   static const QString logo = \
     "▒█▀▀▀█ ▒█▀▀▀ ▒█▀▀█ ▀█▀ ▒█▀▀█ ▒█░░░   ▒█▀▀▀█ ▀▀█▀▀ ▒█░▒█ ▒█▀▀▄ ▀█▀ ▒█▀▀▀█\n" \
@@ -1347,8 +1345,7 @@ void Widgets::Terminal::append(const QString& data)
   const int len = data.size();
 
   while (pos < len) {
-    // Fast path: in Text state, scan ahead for runs of printable chars
-    // that don't need per-char state-machine dispatch.
+    // Fast path: scan ahead for printable runs while in Text state.
     if (m_state == Text) [[likely]] {
       const int runStart = pos;
       while (pos < len) {
@@ -1730,7 +1727,7 @@ void Widgets::Terminal::processFormat(const QChar& byte, QString& text)
     m_currentFormatValue = m_currentFormatValue * 10 + (byte.cell() - '0');
   }
 
-  // DEC private mode prefix — silently note it, stay in Format state
+  // DEC private mode prefix; silently note it, stay in Format state.
   else if (byte == '?' || byte == '>' || byte == '=') {
     m_privateMode = true;
   }
@@ -1755,7 +1752,7 @@ void Widgets::Terminal::processFormat(const QChar& byte, QString& text)
       m_state = Text;
     }
 
-    // s — save cursor position (ANSI)
+    // s: save cursor position (ANSI).
     else if (byte == 's') {
       if (!m_privateMode)
         m_savedCursorPosition = m_cursorPosition;
@@ -1763,7 +1760,7 @@ void Widgets::Terminal::processFormat(const QChar& byte, QString& text)
       m_state = Text;
     }
 
-    // u — restore cursor position (ANSI)
+    // u: restore cursor position (ANSI).
     else if (byte == 'u') {
       if (!m_privateMode)
         setCursorPosition(m_savedCursorPosition);
@@ -1802,7 +1799,7 @@ void Widgets::Terminal::processFormat(const QChar& byte, QString& text)
       m_state = Text;
     }
 
-    // Move cursor to position — H (CUP) and f (HVP), 1-based row;col
+    // Move cursor to position: H (CUP) and f (HVP), 1-based row;col.
     else if (byte == 'H' || byte == 'f') {
       if (!m_privateMode) {
         const int row = qMax(0, m_formatValues.value(0, 1) - 1);
@@ -1814,7 +1811,7 @@ void Widgets::Terminal::processFormat(const QChar& byte, QString& text)
       m_state = Text;
     }
 
-    // G — Cursor Horizontal Absolute (1-based column)
+    // G: Cursor Horizontal Absolute (1-based column).
     else if (byte == 'G') {
       if (!m_privateMode) {
         const int col = qMax(0, m_currentFormatValue > 0 ? m_currentFormatValue - 1 : 0);
@@ -1824,7 +1821,7 @@ void Widgets::Terminal::processFormat(const QChar& byte, QString& text)
       m_state = Text;
     }
 
-    // d — Cursor Vertical Absolute (1-based row)
+    // d: Cursor Vertical Absolute (1-based row).
     else if (byte == 'd') {
       if (!m_privateMode) {
         const int row = qMax(0, m_currentFormatValue > 0 ? m_currentFormatValue - 1 : 0);
@@ -1834,7 +1831,7 @@ void Widgets::Terminal::processFormat(const QChar& byte, QString& text)
       m_state = Text;
     }
 
-    // J function — Erase in display
+    // J: Erase in display.
     else if (byte == 'J') {
       if (!m_privateMode) {
         const int cy = m_cursorPosition.y();
@@ -1872,7 +1869,7 @@ void Widgets::Terminal::processFormat(const QChar& byte, QString& text)
       m_state = Text;
     }
 
-    // K function — Erase in line
+    // K: Erase in line.
     else if (byte == 'K') {
       if (!m_privateMode) {
         switch (m_currentFormatValue) {
@@ -1894,7 +1891,7 @@ void Widgets::Terminal::processFormat(const QChar& byte, QString& text)
       m_state = Text;
     }
 
-    // P function — Delete characters
+    // P: Delete characters.
     else if (byte == 'P') {
       if (!m_privateMode) {
         removeStringFromCursor(LeftDirection, m_currentFormatValue);
@@ -1904,7 +1901,7 @@ void Widgets::Terminal::processFormat(const QChar& byte, QString& text)
       m_state = Text;
     }
 
-    // h / l — DEC private mode set/reset (e.g. ?25h show cursor, ?25l hide cursor)
+    // h / l: DEC private mode set/reset (e.g. ?25h show cursor, ?25l hide cursor).
     else if (byte == 'h' || byte == 'l') {
       if (m_privateMode && m_currentFormatValue == 25) {
         m_cursorHidden = (byte == 'l');
@@ -1963,8 +1960,6 @@ void Widgets::Terminal::updateAnsiColorPalette()
   const QColor consoleText = theme->getColor("console_text");
   const bool isDarkTheme   = consoleText.lightness() > consoleBase.lightness();
 
-  // Colors for dark backgrounds.
-  // Index order: 0=Black, 1=Red, 2=Green, 3=Yellow, 4=Blue, 5=Magenta, 6=Cyan, 7=White.
   if (isDarkTheme) {
     // Standard ANSI colors (dark theme)
     m_ansiStandardColors[0] = QColor(0, 0, 0);
@@ -1987,8 +1982,6 @@ void Widgets::Terminal::updateAnsiColorPalette()
     m_ansiBrightColors[7] = QColor(255, 255, 255);
   }
 
-  // Colors for light backgrounds.
-  // Index order: 0=Black, 1=Red, 2=Green, 3=Yellow, 4=Blue, 5=Magenta, 6=Cyan, 7=White.
   else {
     // Standard ANSI colors (light theme)
     m_ansiStandardColors[0] = QColor(0, 0, 0);
@@ -2455,7 +2448,7 @@ void Widgets::Terminal::mouseMoveEvent(QMouseEvent* event)
   // Determine the current cursor position based on the mouse event
   QPoint currentCursorPos = positionToCursor(event->pos());
 
-  // Check if selection is inverted (from bottom-right to top-left or similar)
+  // Selection inverted (extends backwards from anchor)?
   if ((m_selectionStartCursor.y() > currentCursorPos.y())
       || (m_selectionStartCursor.y() == currentCursorPos.y()
           && m_selectionStartCursor.x() > currentCursorPos.x())) {

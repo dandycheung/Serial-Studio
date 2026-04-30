@@ -86,9 +86,6 @@ Item {
                                      && !sessionPlayerOpen)
                                     || mqttSubscriber
 
-  //
-  // Cross-launch app flags — shared store, NOT per-deployment
-  //
   Settings {
     category: "App"
     property alias hideWelcomeDialog: app.dontNag
@@ -102,9 +99,6 @@ Item {
     Cpp_Updater.checkForUpdates(Cpp_AppUpdaterUrl)
   }
 
-  //
-  // Centralized quit — save prompt in author mode, then defer C++ teardown
-  //
   function quitApplication() {
     if (app.quitting)
       return
@@ -132,9 +126,6 @@ Item {
     onTriggered: Cpp_Misc_ModuleManager.onQuit()
   }
 
-  //
-  // Boot path — runtime mode skips the welcome dialog
-  //
   Component.onCompleted: {
     if (Cpp_CommercialBuild
         && !app.runtimeMode
@@ -158,9 +149,6 @@ Item {
     }
   }
 
-  //
-  // Main window — hosts dashboard, terminal, and every transient dialog
-  //
   MainWindow.MainWindow {
     id: mainWindow
 
@@ -216,9 +204,6 @@ Item {
       source: "qrc:/serial-studio.com/gui/qml/Dialogs/About.qml"
     }
 
-    //
-    // Help center — synchronous load (WebEngineView races on Linux otherwise)
-    //
     DialogLoader {
       id: helpCenter
 
@@ -318,9 +303,6 @@ Item {
       source: "qrc:/serial-studio.com/gui/qml/Dialogs/FileTransmission.qml"
     }
 
-    //
-    // CSV file playback dialog — auto-shown by Cpp_CSV_Player.isOpen
-    //
     Loader {
       id: csvPlayerLoader
 
@@ -330,9 +312,6 @@ Item {
       }
     }
 
-    //
-    // MDF4 file playback dialog (Pro) — auto-shown by Cpp_MDF4_Player.isOpen
-    //
     Loader {
       id: mdf4PlayerLoader
 
@@ -342,9 +321,6 @@ Item {
       }
     }
 
-    //
-    // Session-database playback dialog (Pro) — auto-shown by Cpp_Sessions_Player.isOpen
-    //
     Loader {
       id: sqlitePlayerLoader
 
@@ -352,9 +328,6 @@ Item {
       active: Cpp_CommercialBuild && !app.runtimeMode
     }
 
-    //
-    // Project-editor icon picker — direct instance, resolved by id from editor views
-    //
     Dialogs.IconPicker {
       id: actionIconPicker
     }
@@ -371,9 +344,6 @@ Item {
     }
   }
 
-  //
-  // Project editor — separate top-level window, skipped in runtime mode
-  //
   Loader {
     id: projectEditorLoader
 
@@ -385,9 +355,6 @@ Item {
     }
   }
 
-  //
-  // Database explorer (Pro) — lazy DialogLoader keeps its QSettings out of operator builds
-  //
   DialogLoader {
     id: dbExplorerLoader
 
@@ -419,9 +386,6 @@ Item {
     mainWindow.showWindow()
   }
 
-  //
-  // Help center — accessible to operators, may pre-select a page id
-  //
   function showHelpCenter(pageId) {
     if (pageId)
       Cpp_HelpCenter.showPage(pageId)
@@ -429,17 +393,11 @@ Item {
     helpCenter.activate()
   }
 
-  //
-  // License activation dialog — accessible to operators
-  //
   function showLicenseDialog() {
     if (Cpp_CommercialBuild)
       licenseDialog.activate()
   }
 
-  //
-  // Runtime reconfigure prompt — used by the runtime-mode reconnect path
-  //
   function showRuntimeReconfigure(mode) {
     if (!Cpp_CommercialBuild)
       return
@@ -452,9 +410,6 @@ Item {
     runtimeReconfigureDialog.activate()
   }
 
-  //
-  // Welcome dialog — short-circuits to the main window if trial banner is dismissed
-  //
   function showWelcomeDialog() {
     if (!Cpp_CommercialBuild)
       return
@@ -468,66 +423,41 @@ Item {
       welcomeDialog.activate()
   }
 
-  //
-  // About dialog — author-only
-  //
   function showAboutDialog() {
     if (!app.runtimeMode)
       aboutDialog.activate()
   }
 
-  //
-  // App preferences — author-only
-  //
   function showSettingsDialog() {
     if (!app.runtimeMode)
       settingsDialog.activate()
   }
 
-  //
-  // Acknowledgements — author-only
-  //
   function showAcknowledgements() {
     if (!app.runtimeMode)
       acknowledgementsDialog.activate()
   }
 
-  //
-  // File transmission — author-only
-  //
   function showFileTransmission() {
     if (!app.runtimeMode)
       fileTransmissionDialog.activate()
   }
 
-  //
-  // Examples browser — author-only
-  //
   function showExamplesBrowser() {
     if (!app.runtimeMode)
       examplesBrowser.activate()
   }
 
-  //
-  // Extension manager — author-only
-  //
   function showExtensionManager() {
     if (!app.runtimeMode)
       extensionManager.activate()
   }
 
-  //
-  // Project editor — author-only
-  //
   function showProjectEditor() {
     if (!app.runtimeMode && projectEditorLoader.item)
       projectEditorLoader.item.displayWindow()
   }
 
-  //
-  // Database explorer — author-only by default; in operator mode requires
-  // session-export ON, and pins the explorer to the project's session DB.
-  //
   function showDatabaseExplorer() {
     if (!Cpp_CommercialBuild)
       return
@@ -543,17 +473,11 @@ Item {
     dbExplorerLoader.activate()
   }
 
-  //
-  // MQTT configuration — Pro, author-only
-  //
   function showMqttConfiguration() {
     if (Cpp_CommercialBuild && !app.runtimeMode)
       mqttConfiguration.activate()
   }
 
-  //
-  // Operator-deployment generator — Pro, author-only
-  //
   function showShortcutGenerator() {
     if (Cpp_CommercialBuild && !app.runtimeMode)
       shortcutGeneratorDialog.activate()

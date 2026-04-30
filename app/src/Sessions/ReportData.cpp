@@ -138,7 +138,7 @@ Sessions::ReportData Sessions::ReportData::buildFromSession(QSqlDatabase& db, in
     it->stddev          = std::sqrt(var);
   }
 
-  // Count string samples per dataset (separate query — keeps the aggregate pass tight)
+  // Count string samples per dataset in a separate query (keeps the aggregate pass tight).
   QSqlQuery strQ(db);
   strQ.prepare("SELECT unique_id, COUNT(*) FROM readings "
                "WHERE session_id = ? AND is_numeric = 0 GROUP BY unique_id");

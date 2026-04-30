@@ -434,7 +434,7 @@ void Sessions::DatabaseManager::openDatabase(const QString& filePath)
     return;
   }
 
-  // WAL lets the Export writer and this reader coexist without locks
+  // WAL keeps the Export writer and the reader coexisting without locks.
   QSqlQuery pragma(m_db);
   pragma.exec("PRAGMA journal_mode=WAL");
   pragma.exec("PRAGMA busy_timeout=5000");
@@ -995,7 +995,7 @@ void Sessions::DatabaseManager::exportSessionToPdf(int sessionId, const QVariant
   opts.lineWidth           = options.value("lineWidth", 1.4).toDouble();
   opts.lineStyle           = options.value("lineStyle", QStringLiteral("solid")).toString();
 
-  // Decode the output format string — defaults to PDF for backwards compat
+  // Decode output format; defaults to PDF for back-compat.
   const QString fmtStr = options.value("outputFormat", QStringLiteral("pdf")).toString().toLower();
   if (fmtStr == QStringLiteral("html"))
     opts.format = HtmlReportOptions::Format::Html;
@@ -1006,7 +1006,7 @@ void Sessions::DatabaseManager::exportSessionToPdf(int sessionId, const QVariant
 
   // Run the export once the output path is known
   auto startExport = [this, sessionId](HtmlReportOptions opts) {
-    // HTML-only is synchronous — skip the progress dialog
+    // HTML-only path is synchronous; skip the progress dialog.
     const bool reportBusy = (opts.format != HtmlReportOptions::Format::Html);
     if (reportBusy) {
       m_pdfExportBusy     = true;
@@ -1382,7 +1382,7 @@ void Sessions::DatabaseManager::createSchema(QSqlQuery& q)
          "  is_virtual  INTEGER NOT NULL DEFAULT 0"
          ")");
 
-  // One row per dataset per frame; surrogate PK lets same-ns frames coexist
+  // One row per dataset per frame; surrogate PK keeps same-ns frames distinct.
   q.exec("CREATE TABLE IF NOT EXISTS readings ("
          "  reading_id          INTEGER PRIMARY KEY AUTOINCREMENT,"
          "  session_id          INTEGER NOT NULL,"

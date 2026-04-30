@@ -84,11 +84,6 @@ Popup {
   signal newWorkspaceRequested()
   signal renameWorkspaceRequested(int workspaceId, string currentName)
 
-  //
-  // Returns the list of currently-visible start menu actions whose name
-  // matches `filter`. Each entry is `{ name, icon, run }` — `run` is the
-  // closure that fires the action. Used by the taskbar's search popup.
-  //
   function searchableItems(filter) {
     var runtimeMode = (typeof CLI_RUNTIME_MODE !== "undefined" && CLI_RUNTIME_MODE === true)
     var items = [
@@ -168,25 +163,16 @@ Popup {
     return out
   }
 
-  //
-  // Custom components
-  //
   Component {
     id: _subMenuComponent
 
     Widgets.SubMenuCombo {}
   }
 
-  //
-  // Custom overlay that does not dim everything else
-  //
   Overlay.modal: Rectangle {
     color: "transparent"
   }
 
-  //
-  // Create the background of the control
-  //
   background: Rectangle {
     id: _bg
 
@@ -234,9 +220,6 @@ Popup {
     }
   }
 
-  //
-  // Create a column layout with navigation panels
-  //
   ColumnLayout {
     id: _layout
 
@@ -258,7 +241,6 @@ Popup {
 
       property var popup: null
       function showMenu() {
-        // Create the popup
         if (_groups.popup === null) {
           _groups.popup = _subMenuComponent.createObject(root)
           popup.valueSelected.connect((value) => {
@@ -275,7 +257,6 @@ Popup {
           })
 
           popup.valueRightClicked.connect((value, text, gx, gy) => {
-            // Suppress edit/hide/delete context menu in operator runtime mode
             var runtimeMode = (typeof CLI_RUNTIME_MODE !== "undefined" && CLI_RUNTIME_MODE === true)
             if (value >= 0 && !runtimeMode) {
               _wsContextId = value
@@ -285,9 +266,6 @@ Popup {
           })
         }
 
-        // Build model: workspace model + separator + "New Workspace…"
-        // (the "New Workspace…" entry is hidden in operator runtime mode so
-        //  shortcut-launched dashboards stay locked to the project's layout)
         var items = taskBar.workspaceModel
         var model = []
         for (var i = 0; i < items.length; ++i)
@@ -346,7 +324,6 @@ Popup {
 
       property var popup: null
       function showMenu() {
-        // Create the popup
         if (_actions.popup === null) {
           _actions.popup = _subMenuComponent.createObject(root)
           popup.valueSelected.connect((value) => {
@@ -526,7 +503,6 @@ Popup {
 
       property var popup: null
       function showMenu() {
-        // Create the popup on first use
         if (_export.popup === null) {
           _export.popup = _subMenuComponent.createObject(root)
           _export.popup.valueSelected.connect((value) => {
@@ -621,7 +597,6 @@ Popup {
 
       property var popup: null
       function showMenu() {
-        // Create the popup on first use
         if (_tools.popup === null) {
           _tools.popup = _subMenuComponent.createObject(root)
           _tools.popup.valueSelected.connect((value) => {
@@ -644,8 +619,6 @@ Popup {
           })
         }
 
-        // Build model conditionally — only items applicable to the current
-        // build/runtime mode are shown so the submenu doesn't dead-stub.
         var model = []
 
         if (!app.runtimeMode) {

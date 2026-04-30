@@ -33,31 +33,16 @@ Widgets.Pane {
   title: qsTr("Dataset Values")
   icon: "qrc:/rcc/icons/project-editor/treeview/dataset-values.svg"
 
-  //
-  // Shared column widths and row height — header, rows, and empty-column
-  // spacers stay aligned. Matches TableDelegate's 30-px row height.
-  //
   readonly property int rowHeight: 30
   readonly property int colIdWidth: 80
   readonly property int colGroupWidth: 200
   readonly property int colUnitsWidth: 120
   readonly property int colActionWidth: 40
 
-  //
-  // Dataset rows obtained from ProjectEditor.systemDatasetsSummary().
-  //
   property var datasets: []
 
-  //
-  // Single search string — matches any column (case-insensitive OR).
-  //
   property string searchText: ""
 
-  //
-  // Pad uniqueIds to the digit count of the largest entry (min 5) so the
-  // ID column reads like a memory map. Display only — clipboard / search
-  // against the raw value remain unchanged.
-  //
   readonly property int idPadWidth: {
     let max = 0
     for (let i = 0; i < datasets.length; ++i) {
@@ -71,9 +56,6 @@ Widgets.Pane {
     return String(id).padStart(idPadWidth, '0')
   }
 
-  //
-  // Filtered view — recomputed whenever the search text or dataset list changes.
-  //
   property var filteredDatasets: {
     const q = String(searchText || "").toLowerCase().trim()
     if (!q)
@@ -170,9 +152,6 @@ Widgets.Pane {
         }
       }
 
-      //
-      // Column headers — driven by the shared ProjectTableHeader component.
-      //
       Widgets.ProjectTableHeader {
         z: 2
         Layout.fillWidth: true

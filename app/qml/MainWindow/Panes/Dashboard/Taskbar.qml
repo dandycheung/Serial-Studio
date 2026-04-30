@@ -42,10 +42,6 @@ Item {
   property var startMenu: null
   property var combinedSearchResults: []
 
-  //
-  // Rebuilds the unified search list — widget hits first, then start menu
-  // actions — whenever the filter or widget index changes.
-  //
   function refreshCombinedSearchResults() {
     var widgetHits = taskBar ? taskBar.searchResults : []
     var menuHits = []
@@ -67,11 +63,6 @@ Item {
       searchResultsList.currentIndex = combinedSearchResults.length > 0 ? 0 : -1
   }
 
-  //
-  // Fires the action behind a search result entry. Used by both mouse clicks
-  // and keyboard (Enter) navigation. Snapshot fields before dismissSearch()
-  // so the rebuilt model can't invalidate the entry mid-call.
-  //
   function triggerSearchEntry(entry) {
     if (!entry)
       return

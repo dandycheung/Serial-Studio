@@ -167,7 +167,7 @@ static void MessageHandler(QtMsgType type, const QMessageLogContext& context, co
   const QString channel = QStringLiteral("System");
   const QString title   = isCritical ? QObject::tr("Critical") : QObject::tr("Warning");
 
-  // Forward on the GUI thread — post() asserts main-thread affinity
+  // Forward on the GUI thread; post() asserts main-thread affinity.
   QMetaObject::invokeMethod(
     &nc,
     [level = isCritical ? 2 : 1, channel, title, msg]() {

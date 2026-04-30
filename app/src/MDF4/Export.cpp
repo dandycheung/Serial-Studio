@@ -93,7 +93,6 @@ void MDF4::ExportWorker::processItems(const std::vector<DataModel::TimestampedFr
   if (!IO::ConnectionManager::instance().isConnected())
     return;
 
-  // Create the output file on first batch
   if (!isResourceOpen() && !items.empty()) {
     createFile(items.front()->data);
     m_steadyBaseline = items.front()->timestamp;
@@ -129,8 +128,7 @@ void MDF4::ExportWorker::processItems(const std::vector<DataModel::TimestampedFr
   // Guard mdflib calls against exceptions propagating through Qt's event loop
   try {
     for (const auto& frame : items) {
-      // Monotonic offset from session start, shifted onto the system-clock
-      // epoch so downstream tools see wall-clock timestamps
+      // Monotonic offset from session start, shifted onto system-clock epoch for downstream tools.
       const qint64 offsetNs = monotonicFrameNs(frame->timestamp, m_steadyBaseline);
       const auto systemEpochNs =
         std::chrono::duration_cast<std::chrono::nanoseconds>(m_systemBaseline.time_since_epoch())
@@ -255,7 +253,7 @@ void MDF4::ExportWorker::createFile(const DataModel::Frame& frame)
           numericLookup[{g.groupId, d.datasetId}] = d.isNumeric;
     }
 
-    // Skip image groups entirely — they have no telemetry datasets
+    // Skip image groups: no telemetry datasets.
     for (const auto& group : allGroups) {
       if (group.widget == QLatin1String("image"))
         continue;
@@ -309,9 +307,6 @@ void MDF4::ExportWorker::createFile(const DataModel::Frame& frame)
         info.channels.push_back(channel);
         info.isNumeric.push_back(isNum);
 
-        // Create raw (pre-transform) channel. Always push the pointer — null
-        // included — so info.rawChannels[i] stays aligned with info.channels[i]
-        // and the writer's null guard in writeDatasets() handles the miss.
         auto* rawChannel = channelGroup->CreateChannel();
         if (rawChannel) {
           const auto rawName = dataset.title.toStdString() + " (raw)";
@@ -528,7 +523,7 @@ void MDF4::Export::setExportEnabled(const bool enabled)
     return;
   }
 
-  // License invalid or missing — force disable
+  // License invalid or missing: force disable.
   closeFile();
   setConsumerEnabled(false);
   if (m_persistSettings)

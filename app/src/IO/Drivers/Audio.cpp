@@ -958,15 +958,10 @@ void IO::Drivers::Audio::configureInput()
     return;
   }
 
-  // Clamp indices to valid range
   // clang-format off
   m_selectedSampleRate = qBound(0, m_selectedSampleRate, caps.supportedSampleRates.size() - 1);
   m_selectedInputSampleFormat = qBound(0, m_selectedInputSampleFormat, caps.supportedFormats.size() - 1);
   m_selectedInputChannelConfiguration = qBound(0, m_selectedInputChannelConfiguration, caps.supportedChannelCounts.size() - 1);
-  // clang-format on
-
-  // Apply selected parameters to the MiniAudio config
-  // clang-format off
   const int sampleRate = caps.supportedSampleRates[m_selectedSampleRate];
   const ma_format format = caps.supportedFormats[m_selectedInputSampleFormat];
   const int channels = caps.supportedChannelCounts[m_selectedInputChannelConfiguration];
@@ -997,14 +992,9 @@ void IO::Drivers::Audio::configureOutput()
     return;
   }
 
-  // Clamp indices to valid range
   // clang-format off
   m_selectedOutputSampleFormat = qBound(0, m_selectedOutputSampleFormat, caps.supportedFormats.size() - 1);
   m_selectedOutputChannelConfiguration = qBound(0, m_selectedOutputChannelConfiguration, caps.supportedChannelCounts.size() - 1);
-  // clang-format on
-
-  // Apply selected parameters to the MiniAudio config
-  // clang-format off
   const ma_format format = caps.supportedFormats[m_selectedOutputSampleFormat];
   const int channels = caps.supportedChannelCounts[m_selectedOutputChannelConfiguration];
   // clang-format on

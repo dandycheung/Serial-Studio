@@ -58,9 +58,6 @@ Item {
   readonly property real minZoom: 1.0
   readonly property real maxZoom: 5.0
 
-  //
-  // Image filter — index into filterModel
-  //
   property int filterIndex: 0
   readonly property var currentFilter: filterModel[filterIndex]
   readonly property var filterModel: [
@@ -80,11 +77,6 @@ Item {
   property int cursorImgX: -1
   property int cursorImgY: -1
 
-  //
-  // Helpers: compute the unzoomed painted size analytically from the image
-  // source dimensions and the area size, so clampPan() never reads stale
-  // layout properties.
-  //
   function basePaintedSize() {
     const pw = mainImage.paintedWidth
     const ph = mainImage.paintedHeight
@@ -103,20 +95,11 @@ Item {
     return Qt.size(imageArea.width, imageArea.width / imageAspect)
   }
 
-  //
-  // Zoomed painted dimensions and absolute position of the image rect inside
-  // the widget — used by the crosshair overlay and vignette positioning.
-  //
   readonly property real paintedW: mainImage.paintedWidth  * zoom
   readonly property real paintedH: mainImage.paintedHeight * zoom
   readonly property real paintedX: imageArea.x + (imageArea.width  - paintedW) / 2 + panX
   readonly property real paintedY: imageArea.y + (imageArea.height - paintedH) / 2 + panY
 
-  //
-  // Constrain panX/panY so the image edge never retreats past the area edge.
-  // Accepts an explicit zoom value to avoid reading the stale root.zoom binding
-  // when called immediately after root.zoom is written.
-  //
   function clampPan(z) {
     const z2   = (z !== undefined) ? z : zoom
     const base = basePaintedSize()

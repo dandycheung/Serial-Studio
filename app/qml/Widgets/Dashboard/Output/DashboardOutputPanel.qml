@@ -81,9 +81,6 @@ Item {
         property string owTitle: owData ? owData.title : ""
         property color accentColor: SerialStudio.getDatasetColor(index + 1)
 
-        //
-        // Section label component — uppercase title + separator
-        //
         component SectionLabel : ColumnLayout {
           property string text: ""
           property color labelColor: Cpp_ThemeManager.colors["pane_section_label"]

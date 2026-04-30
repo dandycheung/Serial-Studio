@@ -104,9 +104,6 @@ Item {
       }
     }
 
-    //
-    // Info block — pre-connect, spans both columns
-    //
     Item {
       implicitHeight: 4
       visible: !Cpp_IO_Manager.isConnected
@@ -159,9 +156,6 @@ Item {
       }
     }
 
-    //
-    // IN endpoint (only shown while connected — populated after open())
-    //
     Label {
       opacity: enabled ? 1 : 0.5
       text: qsTr("IN Endpoint") + ":"

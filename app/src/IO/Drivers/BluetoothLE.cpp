@@ -203,8 +203,7 @@ bool IO::Drivers::BluetoothLE::open(const QIODevice::OpenMode mode)
   if (m_deviceIndex < 0 || m_deviceIndex >= s_devices.count())
     return false;
 
-  // Copy pending service/characteristic from the UI driver if not already set
-  // (needed for live drivers created by ConnectionManager)
+  // Copy pending service/characteristic from the UI driver when not already set.
   if (m_pendingServiceUuid.isEmpty() && m_pendingServiceIndex < 0) {
     for (auto* inst : std::as_const(s_instances)) {
       if (inst == this || inst->m_deviceIndex != m_deviceIndex)
@@ -420,8 +419,6 @@ void IO::Drivers::BluetoothLE::selectDevice(const int index)
   if (!operatingSystemSupported())
     return;
 
-  // Ignore index resets when a device is already selected or connected
-  // (QML combobox rebuilds on devicesChanged can trigger selectDevice(0))
   if (index <= 0 && (m_deviceConnected || m_deviceIndex >= 0))
     return;
 
@@ -767,15 +764,13 @@ void IO::Drivers::BluetoothLE::onDeviceDiscovered(const QBluetoothDeviceInfo& de
   s_devices.append(device);
   s_deviceNames.append(device.name());
 
-  // Notify instances that are not connected (QML combobox resets
-  // the selection when the model changes, even if indices are stable)
+  // Notify non-connected instances (QML combobox resets the selection on model change).
   for (auto* inst : std::as_const(s_instances)) {
     if (inst->m_deviceConnected)
       continue;
 
     Q_EMIT inst->devicesChanged();
 
-    // Check if this device matches a pending identifier
     if (!inst->m_pendingIdentifier.isEmpty()) {
       const auto savedAddr = inst->m_pendingIdentifier.value(QStringLiteral("address")).toString();
       const auto savedName = inst->m_pendingIdentifier.value(QStringLiteral("name")).toString();
@@ -838,7 +833,7 @@ void IO::Drivers::BluetoothLE::onHostModeStateChanged(QBluetoothLocalDevice::Hos
   for (auto* inst : std::as_const(s_instances))
     Q_EMIT inst->adapterAvailabilityChanged();
 
-  // Adapter lost — close all connections and clear shared device list
+  // Adapter lost: close all connections and clear shared device list.
   if (!s_adapterAvailable) {
     if (s_discoveryAgent && s_discoveryAgent->isActive())
       s_discoveryAgent->stop();
@@ -918,7 +913,7 @@ bool IO::Drivers::BluetoothLE::selectByIdentifier(const QJsonObject& id)
     return true;
   }
 
-  // Device not found yet — save for deferred matching and start discovery
+  // Device not found yet: save for deferred matching and start discovery.
   m_pendingIdentifier = id;
   if (!s_discoveryAgent || !s_discoveryAgent->isActive())
     startDiscovery();

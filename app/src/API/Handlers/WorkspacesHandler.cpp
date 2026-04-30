@@ -84,7 +84,7 @@ void API::Handlers::WorkspacesHandler::registerCommands()
                            emptySchema,
                            &list);
 
-  // project.workspaces.get — id required
+  // project.workspaces.get: id required
   {
     QJsonObject props;
     props[QStringLiteral("id")] = QJsonObject{

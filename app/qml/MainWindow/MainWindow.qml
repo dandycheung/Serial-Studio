@@ -203,17 +203,13 @@ Widgets.SmartWindow {
     // Obtain document title from JSON project editor
     root.updateDocumentTitle()
 
-    // Always present the window immediately. The connecting overlay covers the
-    // empty dashboard while the device is handshaking.
     root.presentWindow()
 
     // Defer dialogs and update checks until after window is fully rendered
     Qt.callLater(function() {
-      // Runtime mode is unattended — skip nags entirely.
       if (app.runtimeMode)
         return
 
-      // Show donations dialog every 15 launches (GPL builds only — Pro skips it)
       if (root.appLaunchCount % 15 == 0 && !Cpp_CommercialBuild)
         donateDialog.activate()
 

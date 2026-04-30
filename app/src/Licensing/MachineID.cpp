@@ -214,8 +214,6 @@ void Licensing::MachineID::readInformation()
   }
 #endif
 
-  // Warn when every platform fallback returned an empty identifier so issues
-  // with license activation can be diagnosed. Derivation still proceeds below.
   if (id.isEmpty()) [[unlikely]]
     qWarning() << "[MachineID] fallback produced empty fingerprint";
 

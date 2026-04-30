@@ -39,7 +39,7 @@ Widgets::Output::Base::Base(const DataModel::OutputWidget& config, QQuickItem* p
   m_rateLimiter.start();
   installProtocolHelpers(m_jsEngine);
 
-  // Arm the watchdog timer — flips the interrupt flag to unwind runaway transmit scripts
+  // Arm the watchdog timer; flips the interrupt flag to unwind runaway transmit scripts.
   m_watchdog.setSingleShot(true);
   m_watchdog.setInterval(kTransmitWatchdogMs);
   connect(&m_watchdog, &QTimer::timeout, this, [this]() { m_jsEngine.setInterrupted(true); });
@@ -206,15 +206,14 @@ QByteArray Widgets::Output::Base::evaluateTransmitFunction(const QVariant& value
     return {};
   }
 
-  // Convert result to byte array — string results honor the configured
-  // text encoding so non-ASCII characters survive the round-trip
+  // String results honor the configured text encoding so non-ASCII chars survive the round-trip.
   QByteArray data;
   if (result.isString())
     data = SerialStudio::encodeText(result.toString(), m_txEncoding);
   else
     data = result.toVariant().toByteArray();
 
-  // Enforce hard payload size cap — oversized returns indicate runaway / hostile scripts
+  // Hard payload size cap; oversized returns indicate runaway / hostile scripts.
   if (data.size() > kMaxPayloadBytes) [[unlikely]] {
     Q_EMIT transmitError(tr("Payload exceeds maximum size"));
     return {};
@@ -244,8 +243,7 @@ void Widgets::Output::Base::installProtocolHelpers(QJSEngine& engine)
     // Modbus helpers
     // -----------------------------------------------------------------
 
-    // Write a single 16-bit value to a holding register.
-    // Returns 4 bytes: [addr_hi, addr_lo, value_hi, value_lo]
+    // Write 16-bit value to holding register; returns 4 bytes [addr_hi, addr_lo, value_hi, value_lo].
     "function modbusWriteRegister(address, value) {"
     "  var a = address & 0xFFFF;"
     "  var v = Math.round(value) & 0xFFFF;"
@@ -259,8 +257,7 @@ void Widgets::Output::Base::installProtocolHelpers(QJSEngine& engine)
     "  return modbusWriteRegister(address, on ? 0xFF00 : 0x0000);"
     "}"
 
-    // Write an IEEE-754 float across two consecutive holding registers.
-    // Returns 6 bytes: [addr_hi, addr_lo, r1_hi, r1_lo, r2_hi, r2_lo]
+    // Write IEEE-754 float across two holding registers; returns 6 bytes [addr_hi, addr_lo, r1_hi, r1_lo, r2_hi, r2_lo].
     "function modbusWriteFloat(address, value) {"
     "  var buf = new ArrayBuffer(4);"
     "  new DataView(buf).setFloat32(0, value, false);"
@@ -275,8 +272,7 @@ void Widgets::Output::Base::installProtocolHelpers(QJSEngine& engine)
     // CAN Bus helpers
     // -----------------------------------------------------------------
 
-    // Send an arbitrary CAN frame. Payload is a string or array of bytes.
-    // Returns 3+ bytes: [id_hi, id_lo, dlc, payload...]
+    // Send a CAN frame (string or byte array payload); returns 3+ bytes [id_hi, id_lo, dlc, payload].
     "function canSendFrame(id, payload) {"
     "  var canId = id & 0xFFFF;"
     "  var data = '';"

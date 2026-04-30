@@ -162,8 +162,7 @@ void API::Handlers::ProjectHandler::registerCommands()
                            emptySchema,
                            &groupDuplicate);
 
-  // project.group.select — make the given group the "current" selection so
-  // subsequent operations (delete, duplicate) target it.
+  // project.group.select: target subsequent delete/duplicate at the given group.
   {
     QJsonObject props;
     props[QStringLiteral("groupId")] = QJsonObject{
@@ -228,7 +227,7 @@ void API::Handlers::ProjectHandler::registerCommands()
                              &datasetSetOption);
   }
 
-  // project.dataset.setVirtual — gate the frame-index field
+  // project.dataset.setVirtual: gate the frame-index field
   {
     QJsonObject props;
     props[Keys::GroupId] = QJsonObject{
@@ -259,7 +258,7 @@ void API::Handlers::ProjectHandler::registerCommands()
       &datasetSetVirtual);
   }
 
-  // project.dataset.setTransformCode — set Lua/JS transform source
+  // project.dataset.setTransformCode: set Lua/JS transform source
   {
     QJsonObject props;
     props[Keys::GroupId] = QJsonObject{
@@ -724,9 +723,7 @@ API::CommandResponse API::Handlers::ProjectHandler::groupSelect(const QString& i
   const int groupId  = params.value(QStringLiteral("groupId")).toInt();
   const auto& groups = DataModel::ProjectModel::instance().groups();
 
-  // Look up by logical groupId instead of vector index — ProjectModel
-  // currently renumbers so they coincide, but looking up by id is robust
-  // against any future change.
+  // Look up by logical groupId, not vector index, to stay robust if the renumbering changes.
   const auto it = std::find_if(
     groups.begin(), groups.end(), [groupId](const auto& g) { return g.groupId == groupId; });
 
@@ -882,7 +879,6 @@ API::CommandResponse API::Handlers::ProjectHandler::datasetSetVirtual(const QStr
       ErrorCode::InvalidParam,
       QStringLiteral("Dataset id not found in group: %1/%2").arg(groupId).arg(datasetId));
 
-  // Apply the flag — updateDataset validates, emits signals, and rebuilds the tree
   DataModel::Dataset updated = *dit;
   updated.virtual_           = isVirt;
   pm.updateDataset(groupId, datasetId, updated, true);
@@ -1088,7 +1084,7 @@ API::CommandResponse API::Handlers::ProjectHandler::parserSetCode(const QString&
     return CommandResponse::makeError(
       id, ErrorCode::InvalidParam, QStringLiteral("Invalid sourceId"));
 
-  // Optional language flip — validate under the new engine and roll back if invalid.
+  // Optional language flip: validate under the new engine and roll back if invalid.
   const bool hasLanguage = params.contains(QStringLiteral("language"));
   int savedLanguage      = 0;
   if (hasLanguage) {
@@ -1099,7 +1095,6 @@ API::CommandResponse API::Handlers::ProjectHandler::parserSetCode(const QString&
         ErrorCode::InvalidParam,
         QStringLiteral("Invalid language: must be 0 (JavaScript) or 1 (Lua)"));
 
-    // Remember the prior language so we can roll back on failure
     savedLanguage = model.frameParserLanguage(sourceId);
 
     // Flip the language so the engine dispatch picks the right implementation.
@@ -1206,14 +1201,8 @@ API::CommandResponse API::Handlers::ProjectHandler::parserSetLanguage(const QStr
     return CommandResponse::makeError(
       id, ErrorCode::InvalidParam, QStringLiteral("Unknown sourceId"));
 
-  // Update the project model language for the matching source
   model.updateSourceFrameParserLanguage(sourceId, language);
 
-  // Replace the parser code with the matching default template so that the
-  // script source actually parses under the new language. loadDefaultTemplate
-  // dispatches through the FrameParser engine map which reads the language
-  // we just set. Pass guiTrigger=true so the project stays flagged as
-  // modified (the caller explicitly asked for this change).
   DataModel::FrameParser::instance().loadDefaultTemplate(sourceId, true);
 
   QJsonObject result;
@@ -1354,7 +1343,7 @@ API::CommandResponse API::Handlers::ProjectHandler::loadFromJSON(const QString& 
       id, ErrorCode::InvalidParam, QStringLiteral("config cannot be empty"));
   }
 
-  // In-memory load — no temp file, no file association
+  // In-memory load: no temp file, no file association.
   auto& project = DataModel::ProjectModel::instance();
   project.setSuppressMessageBoxes(true);
   const bool ok = project.loadFromJsonDocument(QJsonDocument(config));
@@ -1413,7 +1402,7 @@ API::CommandResponse API::Handlers::ProjectHandler::frameParserConfigure(const Q
   }
 
   if (sourceId == 0) {
-    // Route through top-level setters — they sync into source[0] and update the FrameReader.
+    // Top-level setters sync into source[0] and update the FrameReader.
     if (params.contains(QStringLiteral("startSequence"))) {
       const QString start = params.value(QStringLiteral("startSequence")).toString();
       manager.setStartSequence(start.toUtf8());
@@ -1443,7 +1432,6 @@ API::CommandResponse API::Handlers::ProjectHandler::frameParserConfigure(const Q
       }
     }
   } else {
-    // Update the source struct directly and trigger a device reconfigure.
     DataModel::Source src = model.sources()[sourceId];
 
     if (params.contains(QStringLiteral("startSequence"))) {
@@ -1500,7 +1488,7 @@ API::CommandResponse API::Handlers::ProjectHandler::frameParserGetConfig(const Q
   for (const auto& f : cfg.finishSequences)
     endArr.append(QString::fromUtf8(f));
 
-  // Primary (source[0]) delimiters as singular scalars — single-source clients
+  // Primary (source[0]) delimiters as singular scalars for single-source clients.
   const QString primaryStart =
     cfg.startSequences.isEmpty() ? QString() : QString::fromUtf8(cfg.startSequences.first());
   const QString primaryEnd =

@@ -26,24 +26,10 @@ Loader {
 
   active: false
 
-  //
-  // Dialogs that host a WebEngineView (ExtensionManager, ExamplesBrowser,
-  // HelpCenter) must be loaded synchronously on Linux. When loaded
-  // asynchronously the QML scene is assembled on a worker thread while the
-  // WebEngineView's GPU process handshake races with the Window creation,
-  // which crashes on some Linux configurations. Other dialogs can keep
-  // asynchronous loading by leaving this at its default value.
-  //
   asynchronous: true
 
-  //
-  // Pointer to the generated dialog
-  //
   property var dialog: null
 
-  //
-  // Utility function to show the dialog
-  //
   function activate() {
     if (!active)
       active = true
@@ -54,17 +40,11 @@ Loader {
     }
   }
 
-  //
-  // Utility function to hide the dialog
-  //
   function hide() {
     if (active && dialog)
       dialog.hide()
   }
 
-  //
-  // Utility function to close the dialog
-  //
   function close() {
     if (active && dialog) {
       dialog.close()
@@ -73,12 +53,6 @@ Loader {
     }
   }
 
-  //
-  // SmartWindow exposes displayWindow() which restores the previous geometry
-  // and raises the window; SmartDialog only has the inherited show(). Prefer
-  // displayWindow() when present so authoring windows reopen on the same
-  // screen with the correct size after each unload.
-  //
   onLoaded: {
     root.dialog = item
     dialog.onClosing.connect(function() {

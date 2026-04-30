@@ -353,7 +353,7 @@ void CSV::Player::initializeTimestamps()
     return;
   }
 
-  // No recognized timestamp — prompt user for a strategy
+  // No recognized timestamp; user picks a strategy.
   m_useHighPrecisionTimestamps = false;
   m_timestampCache.clear();
 }
@@ -634,8 +634,6 @@ void CSV::Player::sendHeaderFrame()
   if (headerRow.size() <= 1)
     return;
 
-  // In project mode with multiple sources, build multi-source mapping
-  // and skip QuickPlot header registration (project defines the structure)
   if (AppState::instance().operationMode() == SerialStudio::ProjectFile) {
     const auto& sources = DataModel::ProjectModel::instance().sources();
     if (sources.size() > 1) {

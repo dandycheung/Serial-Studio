@@ -48,18 +48,12 @@ Widgets.SmartDialog {
     property int lineStyleIndex: 0   // 0=Solid, 1=Dashed, 2=Dotted
   }
 
-  //
-  // Line style options — index maps to C++ string keys
-  //
   readonly property var lineStyles: [
     { label: qsTr("Solid"),  value: "solid"  },
     { label: qsTr("Dashed"), value: "dashed" },
     { label: qsTr("Dotted"), value: "dotted" }
   ]
 
-  //
-  // Receive the chosen logo path from the C++ file picker
-  //
   Connections {
     target: Cpp_Sessions_Manager
     function onReportLogoPicked(path) {
@@ -67,11 +61,6 @@ Widgets.SmartDialog {
     }
   }
 
-  //
-  // Page size enum values (match QPageSize::PageSizeId). Reports always
-  // print landscape — a chart with a long X-axis looks squashed on a
-  // portrait page — so the dialog doesn't expose an orientation control.
-  //
   readonly property var pageSizes: [
     { label: qsTr("A4 (210 × 297 mm)"),         value: 0  },
     { label: qsTr("A3 (297 × 420 mm)"),         value: 8  },
@@ -89,13 +78,9 @@ Widgets.SmartDialog {
     { label: qsTr("Ledger (17 × 11 in)"),       value: 28 }
   ]
 
-  //
-  // Public API — open the dialog for a given session
-  //
   function openFor(id) {
     root.sessionId = id
 
-    // Title is derived fresh each time — never persisted across sessions
     const meta = Cpp_Sessions_Manager.sessionMetadata(id)
     if (meta && meta.project_title)
       _titleField.text = qsTr("%1 — Session Report").arg(meta.project_title)
@@ -121,9 +106,6 @@ Widgets.SmartDialog {
     root.raise()
   }
 
-  //
-  // Save the form back into QSettings so next open pre-fills the branding
-  //
   function persistPreferences() {
     _prefs.companyName      = _companyField.text
     _prefs.authorName       = _authorField.text
@@ -138,10 +120,6 @@ Widgets.SmartDialog {
     _prefs.annotateChartStats  = _annotateStatsCheck.checked
   }
 
-  //
-  // Build the options map and invoke the C++ export slot. The C++ side
-  // opens the native QFileDialog save picker when outputPath is empty.
-  //
   function dispatchExport(outputFormat) {
     const options = {
       "outputPath":      "",
@@ -163,18 +141,12 @@ Widgets.SmartDialog {
     Cpp_Sessions_Manager.exportSessionToPdf(root.sessionId, options)
   }
 
-  //
-  // Dialog body (Settings-style: TabBar + StackLayout + bordered panels)
-  //
   dialogContent: ColumnLayout {
     id: layout
 
     spacing: 12
     anchors.fill: parent
 
-    //
-    // Tab bar
-    //
     TabBar {
       id: _tab
 
@@ -200,13 +172,6 @@ Widgets.SmartDialog {
       }
     }
 
-    //
-    // Tab contents. A fixed preferred size pins the dialog so the window
-    // doesn't balloon on platforms whose system font renders taller than
-    // macOS (Windows Segoe UI, some Linux DE fonts). Each tab uses
-    // anchors.fill so its contents expand into the reserved box instead of
-    // pushing the container outward.
-    //
     StackLayout {
       id: _stack
 
@@ -218,9 +183,6 @@ Widgets.SmartDialog {
       currentIndex: _tab.currentIndex
       Layout.topMargin: -parent.spacing - 1
 
-      //
-      // Branding tab
-      //
       Item {
         id: _brandingTab
 

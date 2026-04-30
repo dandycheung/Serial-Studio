@@ -86,7 +86,7 @@ void API::Handlers::DataTablesHandler::registerCommands()
                            emptySchema,
                            &tablesList);
 
-  // project.tables.get — name required
+  // project.tables.get: name required
   {
     QJsonObject props;
     props[QStringLiteral("name")] = QJsonObject{
@@ -103,7 +103,7 @@ void API::Handlers::DataTablesHandler::registerCommands()
                              &tableGet);
   }
 
-  // project.tables.add — optional name (auto-uniquified)
+  // project.tables.add: optional name (auto-uniquified)
   {
     QJsonObject props;
     props[QStringLiteral("name")] = QJsonObject{
@@ -368,8 +368,7 @@ API::CommandResponse API::Handlers::DataTablesHandler::tableRename(const QString
 
   auto& pm = DataModel::ProjectModel::instance();
 
-  // Detect collision up front — renameTable silently no-ops, so a naive
-  // post-check against newName would mistake the existing table for success
+  // renameTable silently no-ops on collision; check up front to avoid mistaking that for success.
   const auto& preTables = pm.tables();
   const bool hasOld     = std::any_of(
     preTables.begin(), preTables.end(), [&oldName](const auto& t) { return t.name == oldName; });

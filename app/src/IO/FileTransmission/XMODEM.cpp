@@ -165,7 +165,7 @@ void IO::Protocols::XMODEM::processInput(const QByteArray& data)
                                  .arg(m_retryCount)
                                  .arg(m_maxRetries));
 
-          // Rewind by actual bytes read — fixed blockSize over-rewinds the final partial block.
+          // Rewind by actual bytes read; fixed blockSize would over-rewind the final partial block.
           m_bytesSent = qMax<qint64>(0, m_bytesSent - m_lastBlockBytes);
           if (!m_file.seek(m_lastBlockStart)) [[unlikely]] {
             m_file.close();
@@ -264,9 +264,6 @@ void IO::Protocols::XMODEM::sendBlock()
   Q_ASSERT(m_file.isOpen());
   Q_ASSERT(m_state == State::SendingBlocks);
 
-  // Snapshot the file position so retries can seek back precisely. The last
-  // block is usually partial — tracking actual bytes read (vs. the padded
-  // block size) is what the NAK / timeout handlers need to rewind to.
   m_lastBlockStart = m_file.pos();
 
   // Read next block; send EOT if file is exhausted

@@ -371,9 +371,7 @@ void Misc::ExtensionManager::refreshRepositories()
   if (m_loading)
     return;
 
-  // Abort any stale replies from a previous refresh so their callbacks
-  // don't append entries to the freshly-cleared catalog with a mismatched
-  // base URL. deleteLater() runs before the aborted-reply handler fires.
+  // Abort stale replies so their callbacks don't append entries with a mismatched base URL.
   for (auto* reply : std::as_const(m_activeReplies)) {
     if (reply) {
       reply->disconnect(this);
@@ -714,15 +712,10 @@ void Misc::ExtensionManager::autoUpdateExtensions()
     break;
   }
 
-  // Schedule next update (after current install completes or immediately).
-  // Both paths use a queued hop so autoUpdate always runs on a clean stack
-  // and m_filteredExtensions has been re-sorted by applyFilter() before
-  // we re-enter.
+  // Schedule the next update via a queued hop so applyFilter() has finished re-sorting first.
   if (!m_autoUpdateQueue.isEmpty()) {
     if (found && m_loading) {
-      // Remote install in progress — wait for completion, then trampoline
-      // through a queued connection so the outer onFileDownloadReply has
-      // finished its applyFilter() before we re-enter.
+      // Remote install in progress: defer until extensionInstalled fires.
       connect(
         this,
         &ExtensionManager::extensionInstalled,
@@ -809,9 +802,6 @@ void Misc::ExtensionManager::onExtensionMetaReply()
   m_activeReplies.remove(reply);
   reply->deleteLater();
 
-  // Only append entries that parse to a non-empty object with a valid id.
-  // Skip entries whose info.json is missing, returned a 404 body, or is
-  // malformed — these would otherwise show up as blank cards in the grid.
   if (reply->error() == QNetworkReply::NoError) {
     const auto doc = QJsonDocument::fromJson(reply->readAll());
     auto obj       = doc.object();
@@ -879,7 +869,7 @@ void Misc::ExtensionManager::onFileDownloadReply()
     return;
   }
 
-  // All downloads complete — register using saved metadata snapshot
+  // All downloads complete: register using the saved metadata snapshot.
   QJsonObject info;
   info.insert("version", m_currentInstallMeta.value("version").toString());
   info.insert("type", m_currentInstallMeta.value("type").toString());
@@ -1423,7 +1413,7 @@ void Misc::ExtensionManager::launchPlugin(const QString& id)
     const auto exes = obj.value("executables").toArray();
     const auto url  = obj.value("url").toString();
 
-    // Skip pip-managed dependencies — handled by run.sh/run.cmd venv
+    // Skip pip-managed dependencies (handled by run.sh/run.cmd venv).
     if (obj.contains("pip")) {
       hasPipDeps = true;
       continue;
@@ -1728,11 +1718,11 @@ void Misc::ExtensionManager::onDashboardAvailableChanged()
 {
   const bool available = UI::Dashboard::instance().available();
 
-  // Dashboard just became visible — restore plugins
+  // Dashboard just became visible: restore plugins.
   if (available && !m_dashboardWasAvailable)
     restoreRunningPlugins();
 
-  // Dashboard just became hidden — save & stop plugins
+  // Dashboard just became hidden: save & stop plugins.
   else if (!available && m_dashboardWasAvailable)
     stopAllPlugins();
 

@@ -114,7 +114,7 @@ void Sessions::ExportWorker::processData()
   if (!consumerEnabled())
     return;
 
-  // Console-only has no frames — open schema-less DB when raw bytes arrive
+  // Console-only has no frames; open schema-less DB when raw bytes arrive.
   if (!m_dbOpen
       && m_operationMode->load(std::memory_order_relaxed)
            == static_cast<int>(SerialStudio::ConsoleOnly)) {
@@ -216,10 +216,10 @@ void Sessions::ExportWorker::createDatabase(const DataModel::Frame& frame)
   // Create every table the session format expects
   createSchema(pragma);
 
-  // Insert the new session row — abandon the open on failure
+  // Abandon the open if the session row insert fails.
   insertSession(frame, dt);
   if (m_sessionId < 0) [[unlikely]] {
-    qWarning() << "[SQLite] Aborting database open — session row was not inserted";
+    qWarning() << "[SQLite] Aborting database open: session row was not inserted";
     m_db.close();
     m_db = QSqlDatabase();
     QSqlDatabase::removeDatabase(connName);
@@ -229,7 +229,7 @@ void Sessions::ExportWorker::createDatabase(const DataModel::Frame& frame)
   // Build export schema and write column definitions
   writeColumnDefs(frame);
 
-  // Store the project JSON in project_metadata for offline reconstruction
+  // Embed the project JSON for offline reconstruction.
   storeProjectMetadata(frame);
 
   // Prepare reusable queries for the hotpath
@@ -354,7 +354,7 @@ QJsonObject Sessions::ExportWorker::buildReplayProjectJson(const DataModel::Fram
     return json;
   }
 
-  // QuickPlot fallback — synthesise a minimal project from the frame
+  // QuickPlot fallback: synthesise a minimal project from the frame.
   QJsonObject json;
   json.insert(Keys::Title, frame.title);
 
@@ -634,7 +634,6 @@ void Sessions::Export::refreshProjectSnapshot()
     }
   }
 
-  // Update the project snapshot
   QMutexLocker locker(&m_projectSnapshotMutex);
   m_projectSnapshot = std::move(payload);
 }
@@ -745,8 +744,7 @@ void Sessions::Export::onWorkerOpenChanged()
     Q_EMIT openChanged();
   }
 
-  // Worker-driven close paths (disconnect, mode switch handled internally)
-  // also need to clear the cached session id so QML edit gates flip back off.
+  // Worker-driven close paths must also clear the cached session id so QML edit gates flip off.
   if (!state && m_currentSessionId.exchange(-1, std::memory_order_relaxed) != -1)
     Q_EMIT currentSessionIdChanged();
 }

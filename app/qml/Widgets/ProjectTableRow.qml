@@ -23,39 +23,9 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 
-//
-// Standard row container used by every project-editor table view.
-//
-// Wraps the user's row content in a Rectangle that paints `table_cell_bg` and
-// a 1-px bottom border. The actual cell layout is the user's responsibility —
-// they place their cells inside this component and bind widths to the same
-// values declared in the matching ProjectTableHeader's `columns` array.
-//
-// Usage as a ListView delegate:
-//
-//   ListView {
-//     model: items
-//     delegate: Widgets.ProjectTableRow {
-//       RowLayout {
-//         spacing: 0
-//         anchors.fill: parent
-//         Label { Layout.preferredWidth: 80;  text: modelData.id }
-//         Rectangle { width: 1; Layout.fillHeight: true; color: separatorColor }
-//         Label { Layout.preferredWidth: 200; text: modelData.group }
-//       }
-//     }
-//   }
-//
-// The row exposes `separatorColor` and `textColor` for delegates that draw
-// their own vertical separators or styled labels.
-//
 Rectangle {
   id: row
 
-  //
-  // Theme passthroughs — saves callers the long `Cpp_ThemeManager.colors[…]`
-  // lookups when wiring the cells.
-  //
   readonly property color separatorColor: Cpp_ThemeManager.colors["table_separator"]
   readonly property color textColor: Cpp_ThemeManager.colors["table_text"]
   readonly property color highlightColor: Cpp_ThemeManager.colors["highlight"]
@@ -65,17 +35,10 @@ Rectangle {
 
   property int rowHeight: 30
 
-  //
-  // Default sizing — picks up the parent ListView's width and the standard
-  // 30-px row height.
-  //
   width: ListView.view ? ListView.view.width : 0
   implicitHeight: rowHeight
   color: Cpp_ThemeManager.colors["table_cell_bg"]
 
-  //
-  // 1-px bottom border separating this row from the next.
-  //
   Rectangle {
     height: 1
     width: parent.width

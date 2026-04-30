@@ -113,10 +113,6 @@ Widgets.Pane {
             verticalCenter: parent.verticalCenter
           }
 
-          //
-          // Customize toggle — off shows the synthetic layout read-only,
-          // on lets the user edit and persist their own workspaces.
-          //
           Widgets.ToolbarButton {
             iconSize: 24
             toolbarButton: false

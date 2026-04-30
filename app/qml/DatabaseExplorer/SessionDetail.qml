@@ -24,27 +24,15 @@ Widgets.Pane {
                          ? Cpp_Sessions_Manager.sessionMetadata(sessionId)
                          : ({})
 
-  //
-  // True when the explorer is opened from a deployed shortcut. Edits are
-  // then restricted to the session currently being recorded.
-  //
   readonly property bool operatorMode: typeof app !== "undefined"
                                        && app.runtimeMode
 
-  //
-  // True when the user is allowed to mutate notes and tag assignments on
-  // the currently-displayed session. In author mode this is always true;
-  // in operator mode only the session being actively recorded is editable.
-  //
   readonly property bool editsAllowed:
     !operatorMode
     || (Cpp_CommercialBuild
         && root.sessionId >= 0
         && root.sessionId === Cpp_Sessions_Export.currentSessionId)
 
-  //
-  // Refresh when selected session changes
-  //
   Connections {
     target: Cpp_Sessions_Manager
     function onSelectedSessionChanged() {
@@ -55,16 +43,10 @@ Widgets.Pane {
     }
   }
 
-  //
-  // Report options dialog — opened by the Generate Report button
-  //
   ReportOptionsDialog {
     id: _reportDialog
   }
 
-  //
-  // Progress dialog — auto-opens on the busy signal, closes when done
-  //
   ReportProgressDialog {
   }
 

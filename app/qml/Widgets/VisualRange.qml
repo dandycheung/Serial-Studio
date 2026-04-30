@@ -29,18 +29,6 @@ ColumnLayout {
   spacing: 0
   implicitWidth: labelBg.width
 
-  //
-  // Custom Properties
-  //
-  // value: current numeric value to display
-  // minValue: minimum range value (shown at bottom if rangeVisible)
-  // maxValue: maximum range value (shown at top if rangeVisible)
-  // units: optional unit string to append to displayed values
-  // alarm: flag to indicate alarm state (changes color theme)
-  // textValue: optional text override for value display
-  // rangeVisible: controls visibility of min/max labels and connectors
-  // maximumWidth: maximum width allowed for labels
-  //
   property real value: 0
   property real minValue: 0
   property real maxValue: 0
@@ -50,10 +38,6 @@ ColumnLayout {
   property bool rangeVisible: false
   property real maximumWidth: root.width
 
-  //
-  // Uses C++ side formatting logic to compute the longest label,
-  // ensuring visual alignment and consistent layout.
-  //
   function maxTextLength() {
     const minStr = Cpp_UI_Dashboard.formatValue(root.minValue, root.minValue, root.maxValue)
     const maxStr = Cpp_UI_Dashboard.formatValue(root.maxValue, root.minValue, root.maxValue)
@@ -63,11 +47,6 @@ ColumnLayout {
     return maxLen
   }
 
-  //
-  // Pads the formatted value with spaces so it matches the width of the
-  // largest possible formatted value (min/max/value). Useful for monospaced
-  // alignment in visuals.
-  //
   function getPaddedText(value) {
     const referenceLen = maxTextLength()
     const valueText = Cpp_UI_Dashboard.formatValue(value, root.minValue, root.maxValue)
@@ -75,22 +54,12 @@ ColumnLayout {
     return padding + valueText
   }
 
-  //
-  // Measures the pixel width of text strings based on the font
-  // used by valueLabel. This allows dynamic calculation of
-  // label width to prevent layout shifts.
-  //
   FontMetrics {
     id: fontMetrics
 
     font: valueLabel.font
   }
 
-  //
-  // Displays the maximum value at the top of the widget.
-  // Uses monospaced font for alignment and allows eliding
-  // if the text overflows the maximum width.
-  //
   Label {
     opacity: 0.8
     elide: Qt.ElideRight
@@ -103,14 +72,8 @@ ColumnLayout {
     text: Cpp_UI_Dashboard.formatValue(root.maxValue, root.minValue, root.maxValue) + " " + root.units
   }
 
-  //
-  // Spacer (4 px)
-  //
   Item { implicitHeight: 4 }
 
-  //
-  // Top Connector Line
-  //
   Rectangle {
     implicitWidth: 2
     Layout.fillHeight: true
@@ -121,18 +84,8 @@ ColumnLayout {
     Behavior on color { ColorAnimation{} }
   }
 
-  //
-  // Spacer (8 px)
-  //
   Item { implicitHeight: 8 }
 
-  //
-  // Displays the current value in the center of the widget.
-  // Uses a custom monospaced font that scales slightly when
-  // rangeVisible is enabled. Calculates its width dynamically
-  // based on the maximum padded text and reserves extra space
-  // (+32 px) to account for background padding and margins.
-  //
   Label {
     id: valueLabel
 
@@ -172,14 +125,8 @@ ColumnLayout {
     }
   }
 
-  //
-  // Spacer (8 px)
-  //
   Item { implicitHeight: 8 }
 
-  //
-  // Bottom Connector Line
-  //
   Rectangle {
     implicitWidth: 2
     Layout.fillHeight: true
@@ -190,17 +137,8 @@ ColumnLayout {
     Behavior on color { ColorAnimation{} }
   }
 
-  //
-  // Spacer (4 px)
-  //
   Item { implicitHeight: 4 }
 
-  //
-  // Displays the minimum value at the bottom of the widget.
-  // Uses monospaced font for consistent alignment with the
-  // max value label. Allows text eliding if the text exceeds
-  // the maximum width.
-  //
   Label {
     opacity: 0.8
     elide: Qt.ElideRight

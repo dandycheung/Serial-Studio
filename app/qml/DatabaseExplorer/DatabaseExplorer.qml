@@ -31,12 +31,6 @@ Widgets.SmartWindow {
          ? Cpp_Sessions_Manager.fileName
          : qsTr("Sessions")
 
-  //
-  // True when the explorer is opened from a deployed shortcut. The dialog
-  // is then pinned to the project's session DB and destructive controls
-  // (open/close/delete/lock/replay/restore) are hidden so the operator
-  // cannot reach for another file or mutate completed sessions.
-  //
   readonly property bool operatorMode: typeof app !== "undefined"
                                        && app.runtimeMode
 
@@ -49,16 +43,10 @@ Widgets.SmartWindow {
 
   Component.onCompleted: Qt.callLater(Cpp_Sessions_Manager.restoreLastDatabase)
 
-  //
-  // Report options dialog — opened by the Export PDF toolbar button
-  //
   ReportOptionsDialog {
     id: _reportDialog
   }
 
-  //
-  // Progress dialog — auto-opens on the pdfExportBusy signal, closes when done
-  //
   ReportProgressDialog {
   }
 
@@ -93,10 +81,6 @@ Widgets.SmartWindow {
       spacing: 0
       anchors.fill: parent
 
-      //
-      // Toolbar — titlebar band + gradient background + RibbonToolbar,
-      // same structure as ProjectEditor/Sections/ProjectToolbar.qml.
-      //
       Rectangle {
         id: toolbar
 

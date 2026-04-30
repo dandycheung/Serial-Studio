@@ -109,7 +109,7 @@ void parseCsvValues(const QByteArray& data, QStringList& out, const int reserveH
  */
 DataModel::FrameBuilder::FrameBuilder() : m_quickPlotChannels(-1), m_quickPlotHasHeader(false)
 {
-  // JS transform watchdog — flips interrupt flag to unwind runaway scripts.
+  // JS transform watchdog flips the interrupt flag to unwind runaway scripts.
   m_jsTransformWatchdog.setSingleShot(true);
   m_jsTransformWatchdog.setInterval(kTransformWatchdogMs);
   connect(&m_jsTransformWatchdog, &QTimer::timeout, this, [this]() {
@@ -125,7 +125,7 @@ DataModel::FrameBuilder::FrameBuilder() : m_quickPlotChannels(-1), m_quickPlotHa
           [this] { syncFromProjectModel(); });
 #endif
 
-  // Tear down engines before static destruction — QJSEngine depends on live Qt.
+  // Tear down engines before static destruction; QJSEngine depends on live Qt.
   if (auto* app = QCoreApplication::instance())
     connect(app, &QCoreApplication::aboutToQuit, this, [this]() { destroyTransformEngines(); });
 }
@@ -173,17 +173,13 @@ void DataModel::FrameBuilder::setupExternalConnections()
           this,
           &DataModel::FrameBuilder::onConnectedChanged);
 
-  // Source IDs get renumbered on delete — wipe transform engines so stale
-  // keys can't fire the wrong Lua/JS ref on the next frame. Engines
-  // recompile lazily on the next connect or project sync.
+  // Wipe transform engines on source deletion so renumbered IDs don't fire stale Lua/JS refs.
   connect(&DataModel::ProjectModel::instance(),
           &DataModel::ProjectModel::sourceDeleted,
           this,
           &DataModel::FrameBuilder::onSourceRemoved);
 
 #ifdef BUILD_COMMERCIAL
-  // Session player opens don't go through ConnectionManager — rebuild transform
-  // engines on its openChanged so replay runs transforms with notify API intact
   connect(&Sessions::Player::instance(), &Sessions::Player::openChanged, this, [this] {
     if (Sessions::Player::instance().isOpen()
         && AppState::instance().operationMode() == SerialStudio::ProjectFile
@@ -422,9 +418,6 @@ void DataModel::FrameBuilder::parseProjectFrame(const IO::CapturedDataPtr& data)
     for (auto& group : m_frame.groups) {
       for (auto& dataset : group.datasets) {
         if (dataset.virtual_) {
-          // Virtual datasets have no source data — reset to defaults so a
-          // missing transform doesn't leak last frame's values. The transform
-          // runs below and supplies the real final value.
           dataset.numericValue = 0.0;
           dataset.value.clear();
           dataset.isNumeric = true;
@@ -446,7 +439,7 @@ void DataModel::FrameBuilder::parseProjectFrame(const IO::CapturedDataPtr& data)
           m_tableStore.setDatasetRaw(
             dataset.uniqueId, dataset.numericValue, dataset.value, dataset.isNumeric);
 
-        // Apply transform (skip for CSV/MDF4 playback — those stores hold transformed values)
+        // Apply transform (skip CSV/MDF4 playback; those stores hold transformed values).
         if (!dataset.transformCode.isEmpty() && !SerialStudio::isFinalValuePlayerOpen())
           [[unlikely]] {
           const auto input =
@@ -550,7 +543,7 @@ void DataModel::FrameBuilder::parseProjectFrame(int sourceId, const IO::Captured
       it = m_sourceFrames.insert(sourceId, std::move(newFrame));
     }
 
-    // Reset computed registers per frame — shared DataTableStore state across sources.
+    // Reset computed registers per frame (DataTableStore is shared across sources).
     if (m_tableStore.isInitialized())
       m_tableStore.resetComputedRegisters();
 
@@ -558,8 +551,7 @@ void DataModel::FrameBuilder::parseProjectFrame(int sourceId, const IO::Captured
     for (auto& group : srcFrame.groups) {
       for (auto& dataset : group.datasets) {
         if (dataset.virtual_) {
-          // Reset virtual datasets so a missing transform can't leak last
-          // frame's value; the transform below supplies the real output.
+          // Reset virtual datasets so a missing transform can't leak prior values.
           dataset.numericValue = 0.0;
           dataset.value.clear();
           dataset.isNumeric = true;
@@ -581,7 +573,7 @@ void DataModel::FrameBuilder::parseProjectFrame(int sourceId, const IO::Captured
           m_tableStore.setDatasetRaw(
             dataset.uniqueId, dataset.numericValue, dataset.value, dataset.isNumeric);
 
-        // Apply transform (skip for CSV/MDF4 playback — those stores hold transformed values)
+        // Apply transform (skip CSV/MDF4 playback; those stores hold transformed values).
         if (!dataset.transformCode.isEmpty() && !SerialStudio::isFinalValuePlayerOpen())
           [[unlikely]] {
           const auto input =
@@ -917,8 +909,6 @@ static void openSafeLibsForTransform(lua_State* L)
     lua_setglobal(L, name);
   }
 
-  // Strip string.dump — lets user code serialise bytecode, which combined
-  // with the runtime's loader can inject unverified code.
   lua_getglobal(L, "string");
   if (lua_istable(L, -1)) {
     lua_pushnil(L);
@@ -940,7 +930,7 @@ void DataModel::FrameBuilder::transformLuaWatchdogHook(lua_State* L, lua_Debug* 
   auto* engine = static_cast<TransformEngine*>(lua_touserdata(L, -1));
   lua_pop(L, 1);
 
-  // Defensive — registry entry should always be present for our states
+  // Defensive: registry entry should always be present for our states.
   if (!engine) [[unlikely]]
     return;
 
@@ -974,7 +964,7 @@ void DataModel::FrameBuilder::compileTransforms()
 
   // Compile one engine per (source, language) key
   for (auto& [key, entries] : byKey) {
-    // Insert before compile — the Lua watchdog captures &engine by pointer
+    // Insert before compile; the Lua watchdog captures &engine by pointer.
     auto [it, inserted] = m_transformEngines.emplace(key, TransformEngine{});
     Q_ASSERT(inserted);
     TransformEngine& engine = it->second;
@@ -997,7 +987,6 @@ void DataModel::FrameBuilder::compileTransforms()
 void DataModel::FrameBuilder::compileTransformsLua(TransformEngine& engine,
                                                    const std::vector<TransformEntry>& entries)
 {
-  // Create a shared Lua state for all transforms in this source
   lua_State* L = luaL_newstate();
   Q_ASSERT(L != nullptr);
   if (!L) [[unlikely]]
@@ -1011,11 +1000,10 @@ void DataModel::FrameBuilder::compileTransformsLua(TransformEngine& engine,
   // Inject table/dataset/variant API before any user code runs
   injectTableApiLua(L);
 
-  // Notification API — gated internally on the active license tier
+  // Notification API (gated internally on the active license tier).
   DataModel::NotificationCenter::installScriptApi(L);
 
-  // Store the engine pointer in the Lua registry so the watchdog
-  // hook can look it up without needing a global singleton pointer
+  // Stash the engine pointer in the Lua registry so the watchdog hook can find it.
   lua_pushlightuserdata(L, &engine);
   lua_setfield(L, LUA_REGISTRYINDEX, "__ss_transform__");
 
@@ -1065,7 +1053,7 @@ void DataModel::FrameBuilder::compileTransformsLua(TransformEngine& engine,
     engine.luaRefs[entry.uniqueId] = luaL_ref(L, LUA_REGISTRYINDEX);
   }
 
-  // Disarm the deadline — subsequent arming happens per-call
+  // Disarm the deadline; subsequent arming happens per-call.
   engine.luaDeadline = QDeadlineTimer(QDeadlineTimer::Forever);
   engine.luaState    = L;
 }
@@ -1077,13 +1065,12 @@ void DataModel::FrameBuilder::compileTransformsLua(TransformEngine& engine,
 void DataModel::FrameBuilder::compileTransformsJS(TransformEngine& engine,
                                                   const std::vector<TransformEntry>& entries)
 {
-  // Create a shared QJSEngine for all transforms in this source
   auto* js = new QJSEngine();
 
   // Inject table/dataset/variant API before any user code runs
   injectTableApiJS(js);
 
-  // Notification API — gated internally on the active license tier
+  // Notification API (gated internally on the active license tier).
   DataModel::NotificationCenter::installScriptApi(js);
 
   for (const auto& entry : entries) {
@@ -1095,7 +1082,7 @@ void DataModel::FrameBuilder::compileTransformsJS(TransformEngine& engine,
                      "})();")
         .arg(entry.code);
 
-    // Evaluate the IIFE — its return value is the transform function
+    // Evaluate the IIFE; its return value is the transform function.
     auto evalResult = js->evaluate(wrapped);
     if (evalResult.isError()) {
       qWarning() << "[FrameBuilder] Transform compile error for"
@@ -1122,8 +1109,7 @@ void DataModel::FrameBuilder::compileTransformsJS(TransformEngine& engine,
 void DataModel::FrameBuilder::destroyTransformEngines()
 {
   for (auto& [id, engine] : m_transformEngines) {
-    // Clear JS function refs BEFORE deleting the engine — QJSValue
-    // destructors access the engine's internal state
+    // Clear JS function refs BEFORE deleting the engine; QJSValue dtors touch engine state.
     engine.jsRefs.clear();
 
     // Release each Lua registry ref before closing the state
@@ -1182,9 +1168,6 @@ QVariant DataModel::FrameBuilder::applyTransform(int sourceId,
     if (rawValue.typeId() == QMetaType::Double) {
       lua_pushnumber(L, rawValue.toDouble());
     } else {
-      // QByteArray holds the UTF-8 buffer alive while Lua copies it into its
-      // own arena; lua_pushlstring avoids Lua's internal strlen() over the
-      // same bytes we already have a length for.
       const auto utf8 = rawValue.toString().toUtf8();
       lua_pushlstring(L, utf8.constData(), static_cast<size_t>(utf8.size()));
     }
@@ -1199,7 +1182,6 @@ QVariant DataModel::FrameBuilder::applyTransform(int sourceId,
       return rawValue;
     }
 
-    // Return the appropriate type
     if (lua_isnumber(L, -1)) {
       const double result = lua_tonumber(L, -1);
       lua_pop(L, 1);
@@ -1246,7 +1228,6 @@ QVariant DataModel::FrameBuilder::applyTransform(int sourceId,
       return rawValue;
     }
 
-    // Return the appropriate type
     if (result.isNumber()) {
       const double val = result.toNumber();
       if (!std::isfinite(val)) [[unlikely]]
@@ -1402,8 +1383,6 @@ void DataModel::FrameBuilder::injectTableApiLua(lua_State* L)
 {
   Q_ASSERT(L);
 
-  // Lua and JavaScript share identical camelCase global names so transforms
-  // can be rewritten from one language into the other without renaming calls.
   lua_pushlightuserdata(L, &m_tableStore);
   lua_pushcclosure(L, luaTableGet, 1);
   lua_setglobal(L, "tableGet");

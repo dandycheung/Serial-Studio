@@ -21,17 +21,11 @@ Item {
   implicitWidth: 420
   implicitHeight: 320
 
-  //
-  // Widget data inputs (unused — NotificationLog is global, not per-group)
-  //
   property var color
   property var model
   property var windowRoot
   property string widgetId
 
-  //
-  // Blink state — armed for kBlinkMs whenever a non-Info event arrives
-  //
   property bool blinking: false
   readonly property int kBlinkMs: 10000
 
@@ -304,9 +298,6 @@ Item {
           }
         }
 
-        //
-        // Empty-state placeholder — large icon, heading, hint text
-        //
         ColumnLayout {
           spacing: 12
           anchors.centerIn: parent

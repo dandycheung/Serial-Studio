@@ -67,9 +67,6 @@ Widgets.SmartDialog {
     root.raise()
   }
 
-  //
-  // Open dialog in "edit" mode — pre-populate with workspace widgets
-  //
   function openEdit(tb, wsId, currentName) {
     root.taskBar = tb
     root.editMode = true

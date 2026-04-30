@@ -53,9 +53,6 @@ RowLayout {
   readonly property real expandedWidth: contentRow.implicitWidth + 4 + (showSeparator ? 1 : 0)
   readonly property real collapsedWidth: collapsedBtn.implicitWidth + 4 + (showSeparator ? 1 : 0)
 
-  //
-  // Content row — visible when NOT collapsed
-  //
   RowLayout {
     id: contentRow
 

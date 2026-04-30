@@ -90,9 +90,6 @@ Widgets.Pane {
       spacing: 0
       anchors.fill: parent
 
-      //
-      // Secondary toolbar — Rename, Delete
-      //
       Rectangle {
         id: toolbar
 
@@ -165,9 +162,6 @@ Widgets.Pane {
         id: addWidgetDialog
       }
 
-      //
-      // Widgets list — header + rows via the shared ProjectTable components.
-      //
       Widgets.ProjectTableHeader {
         Layout.fillWidth: true
         columns: Cpp_JSON_ProjectModel.customizeWorkspaces

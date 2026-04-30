@@ -362,7 +362,6 @@ QString DataModel::DBCImporter::generateFrameParser(const QList<QCanMessageDescr
   code += QString("local values = {}\nfor i = 1, %1 do values[i] = 0 end\n\n").arg(totalSignals);
   // clang-format on
 
-  // Emit extractSignal helper for bit-level extraction
   // clang-format off
   code += "local function extractSignal(data, startBit, length, isBigEndian, isSigned)\n";
   code += "  local value = 0\n\n";
@@ -426,7 +425,6 @@ QString DataModel::DBCImporter::generateFrameParser(const QList<QCanMessageDescr
     code += "\n";
   }
 
-  // Emit main parse function with CAN ID routing
   // clang-format off
   code += "function parse(frame)\n";
   code += "  if #frame < 3 then return values end\n\n";

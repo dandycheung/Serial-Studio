@@ -870,10 +870,6 @@ Widgets.SmartDialog {
         }
       }
 
-      //
-      // Notifications tab (Pro only) — empty Item in GPL builds so the
-      // StackLayout indices still line up with the visible TabButtons.
-      //
       Item {
         id: notificationsTab
 

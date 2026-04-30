@@ -217,7 +217,6 @@ QColor Titlebar::foregroundColor() const
   if (m_backgroundColor == toolbarTop)
     return theme.getColor(QStringLiteral("titlebar_text"));
 
-  // Fall back to luminance-based contrast (W3C formula)
   // clang-format off
   auto linearize = [](qreal c) { return c <= 0.03928 ? c / 12.92 : qPow((c + 0.055) / 1.055, 2.4); };
   const qreal luminance = 0.2126 * linearize(m_backgroundColor.redF())

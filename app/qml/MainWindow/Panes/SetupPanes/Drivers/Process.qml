@@ -31,9 +31,6 @@ Item {
   implicitHeight: layout.implicitHeight
   implicitWidth: layout.implicitWidth + 16
 
-  //
-  // Process picker window — instantiated once, shown on demand
-  //
   ProcessPicker {
     id: picker
 
@@ -89,13 +86,6 @@ Item {
       }
     }
 
-    // ─────────────────────────────────────────────
-    // Launch mode rows
-    // ─────────────────────────────────────────────
-
-    //
-    // Executable
-    //
     Label {
       opacity: enabled ? 1 : 0.5
       text: qsTr("Executable") + ":"
@@ -213,13 +203,6 @@ Item {
       }
     }
 
-    // ─────────────────────────────────────────────
-    // Named pipe rows
-    // ─────────────────────────────────────────────
-
-    //
-    // Pipe path
-    //
     Label {
       opacity: enabled ? 1 : 0.5
       text: qsTr("Pipe Path") + ":"
@@ -285,9 +268,6 @@ Item {
     //
     Item { implicitHeight: 4 } Item { implicitHeight: 4 }
 
-    //
-    // Info block — always visible, spans both columns
-    //
     RowLayout {
       spacing: 8
       Layout.columnSpan: 2

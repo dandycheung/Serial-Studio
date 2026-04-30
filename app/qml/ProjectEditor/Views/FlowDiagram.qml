@@ -53,10 +53,6 @@ Item {
   property real contentW: 0
   property real contentH: 0
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Public interface
-  // ─────────────────────────────────────────────────────────────────────────
-
   function reloadDiagram() {
     layoutDiagram(
       Cpp_JSON_ProjectModel.sourcesForDiagram(),
@@ -71,54 +67,26 @@ Item {
     flickable.contentY = 0
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Layout engine
-  //
-  // Column layout (left → right):
-  //   Col 0  Device cards   (one per source; always shown)
-  //   Col 1  Frame Parser / Action cards (FP per source; actions below)
-  //   Col 2  Group cards   (one per group)
-  //   Col 3  Dataset pills (stacked per group)
-  //
-  // Each group occupies a "slot" of height:
-  //   slotH = max(nodeH, dsCount*(chipH+vGap) - vGap)
-  //
-  // The group card is vertically centred within its slot.
-  // The dataset block is vertically centred within the same slot.
-  // The frame-parser card for a source is centred over the total slot
-  // height of all groups belonging to that source.
-  // The device card is centred over the frame-parser card (same y).
-  // Action cards sit below all groups in the frame-parser column,
-  // with dashed arrows pointing from each action to its target device.
-  // ─────────────────────────────────────────────────────────────────────────
-
   function layoutDiagram(sources, groups, actions) {
     const newNodes  = []
     const newArrows = []
 
-    // ── column x positions ────────────────────────────────────────────────
-    const colDev  = pad                               // device column
-    const colFP   = pad + nodeW + hGap                // frame-parser / action column
-    const colGrp  = colFP  + nodeW + hGap            // group column
-    const colChip = colGrp + nodeW + hGap            // dataset column
+    const colDev  = pad
+    const colFP   = pad + nodeW + hGap
+    const colGrp  = colFP  + nodeW + hGap
+    const colChip = colGrp + nodeW + hGap
 
-    // ── slot height helper ─────────────────────────────────────────────────
     function slotH(dsCount) {
       if (dsCount === 0) return nodeH
       return Math.max(nodeH, dsCount * (chipH + vGap) - vGap)
     }
 
-    // ── per-source vertical state ──────────────────────────────────────────
-    // groupY[sid]     = running y-cursor for placing next group in this source
-    // srcTotalH[sid]  = sum of all slot heights (incl inter-slot gaps) for source
     const groupY    = {}
     const srcTotalH = {}
 
-    // initialise cursors; handle zero-source case (treat as single source 0)
     const fallback = [{ sourceId: 0, busType: SerialStudio.UART, title: "" }]
     const srcList = sources.length > 0 ? sources : fallback
 
-    // first pass: measure total height per source
     for (const src of srcList)
       srcTotalH[src.sourceId] = 0
 
@@ -135,11 +103,9 @@ Item {
       srcTotalH[sid] += slotH(pillCount) + vGap
     }
 
-    // remove trailing vGap; ensure minimum nodeH
     for (const sid in srcTotalH)
       srcTotalH[sid] = Math.max((srcTotalH[sid] || 0) - vGap, nodeH)
 
-    // sources stack vertically — compute starting y for each source's block
     const srcBlockY = {}
     let   nextBlockY = pad
     for (const src of srcList) {
@@ -300,9 +266,6 @@ Item {
         groupY[sid] = slotTop + sh + vGap
     }
 
-    // ── place action cards ──────────────────────────────────────────────────
-    // Actions are placed at the frame-parser column, below all groups,
-    // with dashed arrows pointing from the action to the target device.
     if (actions.length > 0) {
       // Find the y start for actions: below all content so far
       let maxGroupY = pad
@@ -358,10 +321,6 @@ Item {
     canvas.requestPaint()
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Icon helpers
-  // ─────────────────────────────────────────────────────────────────────────
-
   function busTypeIcon(busType) {
     const base = "qrc:/rcc/icons/devices/drivers/"
     switch (busType) {
@@ -413,10 +372,6 @@ Item {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Reactive connections
-  // ─────────────────────────────────────────────────────────────────────────
-
   Connections {
     target: Cpp_JSON_ProjectModel
     function onGroupsChanged()     { root.reloadDiagram() }
@@ -430,10 +385,6 @@ Item {
   onVisibleChanged: if (visible) { reloadDiagram(); canvas.requestPaint() }
   onWidthChanged:   if (visible && width > 0) reloadDiagram()
   onHeightChanged:  if (visible && height > 0) reloadDiagram()
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Flickable + scaled canvas
-  // ─────────────────────────────────────────────────────────────────────────
 
   Flickable {
     id: flickable
@@ -528,8 +479,6 @@ Item {
             // Arrowhead length
             const hl  = 7 * z
 
-            // End the curve at the back of the arrowhead so the
-            // tip touches the target node cleanly.
             const x2a = x2 - hl
             const mx  = (x1 + x2a) / 2
 
@@ -538,7 +487,6 @@ Item {
             ctx.bezierCurveTo(mx, y1, mx, y2, x2a, y2)
             ctx.stroke()
 
-            // Arrowhead — tangent is always horizontal
             const sin = Math.sin(Math.PI / 6)
             ctx.setLineDash([])
             ctx.beginPath()
@@ -721,10 +669,6 @@ Item {
       }
     }
   }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Empty-state placeholder
-  // ─────────────────────────────────────────────────────────────────────────
 
   Column {
     spacing: 8

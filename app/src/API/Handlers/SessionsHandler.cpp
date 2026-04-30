@@ -44,7 +44,7 @@ void API::Handlers::SessionsHandler::registerCommands()
     emptySchema,
     &getStatus);
 
-  // sessions.setExportEnabled — {enabled: bool}
+  // sessions.setExportEnabled: {enabled: bool}
   {
     QJsonObject props;
     props[QStringLiteral("enabled")] = QJsonObject{
@@ -68,7 +68,7 @@ void API::Handlers::SessionsHandler::registerCommands()
     emptySchema,
     &close);
 
-  // sessions.getCanonicalDbPath — {projectTitle: string}
+  // sessions.getCanonicalDbPath: {projectTitle: string}
   {
     QJsonObject props;
     props[QStringLiteral("projectTitle")] = QJsonObject{

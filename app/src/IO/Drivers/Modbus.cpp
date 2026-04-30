@@ -79,7 +79,6 @@ IO::Drivers::Modbus::Modbus()
   m_serialPortIndex = m_settings.value("ModbusDriver/serialPortIndex", 0).toUInt();
   // clang-format on
 
-  // Restore register groups
   // clang-format off
   const int groupCount = m_settings.beginReadArray("ModbusDriver/registerGroups");
   for (int i = 0; i < groupCount; ++i)

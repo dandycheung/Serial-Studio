@@ -699,41 +699,31 @@ ColumnLayout {
               // Add space automatically in hex view
               //
               onTextChanged: {
-                // Get the current cursor position
                 const currentCursorPosition = _hexComponent.cursorPosition;
                 const cursorAtEnd = (currentCursorPosition === _hexComponent.text.length);
 
-                // Format the text
                 const originalText = _hexComponent.text;
                 const formattedText = Cpp_Console_Handler.formatUserHex(_hexComponent.text);
                 const isValid = Cpp_Console_Handler.validateUserHex(formattedText);
 
-                // Update the text only if it has changed
                 if (originalText !== formattedText) {
                   _hexComponent.text = formattedText;
 
-                  // Restore the cursor position, adjusting for added spaces
                   if (!cursorAtEnd) {
-                    // Remove spaces from originalText and formattedText to compare lengths
                     const cleanedOriginalText = originalText.replace(/ /g, '');
                     const cleanedFormattedText = formattedText.replace(/ /g, '');
 
-                    // Calculate the difference in length due to formatting
                     const lengthDifference = cleanedFormattedText.length - cleanedOriginalText.length;
 
-                    // Count spaces before the cursor in both texts
                     let spacesBeforeCursorOriginal = (originalText.slice(0, currentCursorPosition).match(/ /g) || []).length;
                     let spacesBeforeCursorFormatted = (formattedText.slice(0, currentCursorPosition).match(/ /g) || []).length;
 
-                    // Calculate adjustment factor
                     const adjustment = spacesBeforeCursorFormatted - spacesBeforeCursorOriginal + lengthDifference;
 
-                    // Restore the cursor position with adjustment
                     _hexComponent.cursorPosition = Math.min(currentCursorPosition + adjustment, _hexComponent.text.length);
                   }
                 }
 
-                // Update the palette based on validation
                 _hexComponent.color = isValid
                     ? Cpp_ThemeManager.colors["table_text"]
                     : Cpp_ThemeManager.colors["alarm"]

@@ -176,8 +176,6 @@ int main(int argc, char** argv)
   if (headless)
     argv = injectPlatformArg(argc, argv, "offscreen");
 
-  // Peek at --shortcut-path before Qt parses CLI; needed early for taskbar identity
-  // and per-shortcut QML settings isolation
   const QString earlyShortcutPath = argvValueFor(argc, argv, "--shortcut-path");
 
 #if defined(Q_OS_WIN)
@@ -216,7 +214,6 @@ int main(int argc, char** argv)
   app.setStyle(QStyleFactory::create("Fusion"));
   QQuickStyle::setStyle("Fusion");
 
-  // Define command-line options
   // clang-format off
   typedef QCommandLineOption QCLO;
   QCLO vOpt({"v", "version"}, "Displays application version");
@@ -344,8 +341,6 @@ int main(int argc, char** argv)
 #endif
 
 #ifdef BUILD_COMMERCIAL
-  // Handle a missing shortcut project file BEFORE bringing up QML — otherwise
-  // the runtime window flashes behind this prompt while the user reads it.
   if (runtimeMode && parser.isSet(pOpt)) {
     const QString projectPath = parser.value(pOpt);
     if (!QFileInfo::exists(projectPath)) {
@@ -375,7 +370,6 @@ int main(int argc, char** argv)
   }
 #endif
 
-  // Initialize the module manager
   Misc::ModuleManager moduleManager;
   moduleManager.setHeadless(headless);
   moduleManager.configureUpdater();
@@ -431,14 +425,6 @@ int main(int argc, char** argv)
     });
   }
 
-  // Apply CLI export toggles before any auto-connect.
-  //
-  // In runtime mode each export flag is set explicitly to true OR false (so a
-  // shortcut authoring CSV-only never inherits a stale MDF4 toggle from the
-  // user's normal Serial Studio settings), and persistence is suppressed so
-  // a rogue operator cannot mutate the user's main app preferences via a
-  // shortcut launch. Outside runtime mode we keep the existing opt-in
-  // behaviour: only enable when the flag is set.
 #ifdef BUILD_COMMERCIAL
   if (runtimeMode) {
     CSV::Export::instance().setSettingsPersistent(false);

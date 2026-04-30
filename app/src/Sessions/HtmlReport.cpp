@@ -200,7 +200,7 @@ void Sessions::HtmlReport::render(const ReportData& data,
 
   Q_EMIT progress(tr("Assembling report…"), 0.10);
 
-  // Build the single HTML string — used for both outputs
+  // Build the HTML string shared by both outputs.
   m_htmlCache = buildHtml();
   if (m_htmlCache.isEmpty()) {
     Q_EMIT finished(QString(), false);
@@ -273,7 +273,7 @@ QString Sessions::HtmlReport::buildHtml() const
   const QString chartsHtml =
     (m_opts.includeCharts && !m_series.empty()) ? buildChartsSection() : QString();
 
-  // Template expansion (multi-pass replace — one per placeholder)
+  // Template expansion: one replace pass per placeholder.
   html.replace(QStringLiteral("{{CHART_JS}}"), chartJs);
   html.replace(QStringLiteral("{{REPORT_CSS}}"), css);
   html.replace(QStringLiteral("{{REPORT_JS}}"), js);
@@ -310,8 +310,7 @@ QString Sessions::HtmlReport::buildHtml() const
  */
 QString Sessions::HtmlReport::buildCoverSection() const
 {
-  // Resolve the logo markup — embed raster files as base64 data URIs so the
-  // HTML stays self-contained; SVG files are inlined verbatim.
+  // Logo markup: SVG inlined verbatim, raster files embedded as base64 data URIs.
   QString logoMarkup;
   if (!m_opts.logoPath.isEmpty() && QFileInfo::exists(m_opts.logoPath)) {
     const QFileInfo fi(m_opts.logoPath);
@@ -356,7 +355,7 @@ QString Sessions::HtmlReport::buildCoverSection() const
                             ? QString()
                             : QStringLiteral("<div class=\"logo\">%1</div>").arg(logoMarkup);
 
-  // Cover facts strip — at-a-glance document identity
+  // Cover facts strip: at-a-glance document identity.
   const QString facts =
     QStringLiteral(
       "<div class=\"cover-facts\">"
@@ -467,13 +466,12 @@ QString Sessions::HtmlReport::buildSummarySection() const
   if (m_data.datasets.empty())
     return QString();
 
-  // Units column is dropped entirely when no parameter carries a unit,
-  // so the table fits the remaining columns more naturally on the page.
+  // Drop the units column when no parameter carries a unit so the table fits naturally.
   const bool anyUnits = std::any_of(m_data.datasets.begin(),
                                     m_data.datasets.end(),
                                     [](const DatasetStats& d) { return !d.units.isEmpty(); });
 
-  // Table header — data-sort-type drives the JS comparator
+  // Table header: data-sort-type drives the JS comparator.
   QString header = QStringLiteral("<thead><tr>")
                  + QStringLiteral("<th class=\"align-left\" data-sort-type=\"text\">%1</th>")
                      .arg(escapeHtml(tr("Parameter")));
@@ -570,8 +568,6 @@ QString Sessions::HtmlReport::buildChartsSection() const
                .arg(escapeHtml(fullName), units, escapeHtml(sub), QString::number(s.uniqueId));
   }
 
-  // Screen-only overlay chart — every signal on one plot, toggleable via
-  // Chart.js's built-in legend. Hidden in print via @media print.
   const QString overlay =
     m_series.size() >= 2
       ? QStringLiteral("<section class=\"section screen-only overlay-section\">"
@@ -602,9 +598,7 @@ QString Sessions::HtmlReport::buildChartsSection() const
  */
 QString Sessions::HtmlReport::buildReportDataJson() const
 {
-  // Index DatasetStats by uniqueId so each series can carry its
-  // population-wide min/max/mean (computed in SQL, not from the decimated
-  // sample window).
+  // Index DatasetStats by uniqueId for population-wide min/max/mean (SQL-computed, not decimated).
   std::map<int, const DatasetStats*> statsByUid;
   for (const auto& d : m_data.datasets)
     statsByUid.emplace(d.uniqueId, &d);
@@ -626,8 +620,6 @@ QString Sessions::HtmlReport::buildReportDataJson() const
     entry["times"]  = times;
     entry["values"] = values;
 
-    // Per-series stats payload — present only when the dataset has numeric
-    // samples; the JS plugin is no-op for any series missing this block.
     const auto it = statsByUid.find(s.uniqueId);
     if (it != statsByUid.end() && it->second->numericSamples > 0) {
       QJsonObject stats;
@@ -659,7 +651,7 @@ QString Sessions::HtmlReport::buildReportDataJson() const
   root["style"]   = style;
   root["options"] = options;
 
-  // Compact form — whitespace would bloat the inline blob for big sessions
+  // Compact form: whitespace would bloat the inline blob for big sessions.
   return QString::fromUtf8(QJsonDocument(root).toJson(QJsonDocument::Compact));
 }
 

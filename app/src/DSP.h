@@ -676,8 +676,7 @@ inline bool downsampleMonotonic(
   if (firstFinite == n)
     return false;
 
-  // Fallback to index-based sampling when X range is zero or invalid
-  // (e.g., all X values are identical)
+  // Index-based sampling when X range is zero or invalid (e.g. all X values identical).
   if (!(xmin < xmax)) {
     // Calculate step size
     std::size_t step = n / (std::max(1, w));

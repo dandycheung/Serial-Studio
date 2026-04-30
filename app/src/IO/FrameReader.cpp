@@ -61,7 +61,6 @@ void IO::FrameReader::processData(const CapturedDataPtr& data)
   if (m_operationMode == SerialStudio::ConsoleOnly)
     return;
 
-  // Flag to decide if we should emit signals
   bool framesEnqueued = false;
 
   // Passthrough when no delimiters are configured
@@ -105,7 +104,6 @@ void IO::FrameReader::processData(const CapturedDataPtr& data)
         break;
     }
 
-    // Check if we extracted any frames
     framesEnqueued = (m_queue.size_approx() > initialSize);
   }
 
@@ -447,7 +445,7 @@ IO::ValidationStatus IO::FrameReader::checksum(const QByteArray& frame, qsizetyp
   Q_ASSERT(!frame.isEmpty());
   Q_ASSERT(crcPosition >= 0);
 
-  // No checksum configured — always valid
+  // No checksum configured: always valid.
   if (m_checksumLength == 0)
     return ValidationStatus::FrameOk;
 

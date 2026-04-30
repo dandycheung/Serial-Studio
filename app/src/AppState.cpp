@@ -36,8 +36,7 @@
  */
 AppState::AppState() : m_operationMode(SerialStudio::QuickPlot)
 {
-  // Clamp persisted int to [ProjectFile, QuickPlot] — out-of-range would trip
-  // FrameReader::processData's mode assertion.
+  // Clamp persisted int to [ProjectFile, QuickPlot] to keep FrameReader's mode assertion satisfied.
   const int saved   = m_settings.value("operation_mode", SerialStudio::QuickPlot).toInt();
   const int clamped = (saved >= SerialStudio::ProjectFile && saved <= SerialStudio::QuickPlot)
                       ? saved
@@ -200,8 +199,7 @@ IO::FrameConfig AppState::deriveFrameConfig() const
   IO::FrameConfig cfg;
   cfg.operationMode = m_operationMode;
 
-  // QuickPlot: LF first (most common → single KMP scan in the hotpath),
-  // then CRLF and bare CR. CSV parser trims stray \r.
+  // QuickPlot: LF first (KMP fast path), then CRLF and bare CR. CSV trims stray \r.
   if (m_operationMode == SerialStudio::QuickPlot) {
     cfg.startSequences    = {};
     cfg.finishSequences   = {QByteArray("\n"), QByteArray("\r\n"), QByteArray("\r")};
@@ -239,8 +237,6 @@ IO::FrameConfig AppState::deriveFrameConfig() const
   cfg.startSequences  = startSeq.isEmpty() ? QList<QByteArray>{} : QList<QByteArray>{startSeq};
   cfg.finishSequences = finishSeq.isEmpty() ? QList<QByteArray>{} : QList<QByteArray>{finishSeq};
 
-  // Downgrade detection when required delimiters are empty — prevents
-  // FrameReader's non-empty-delimiter assertion on a malformed project.
   if ((cfg.frameDetection == SerialStudio::StartDelimiterOnly
        || cfg.frameDetection == SerialStudio::StartAndEndDelimiter)
       && cfg.startSequences.isEmpty()) [[unlikely]]

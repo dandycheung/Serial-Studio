@@ -129,9 +129,6 @@ Window {
     onActiveChanged: if (active) root.startSystemMove()
   }
 
-  //
-  // Data model — updated by refresh()
-  //
   property var allWidgets: []
   property var existingKeys: []   // keys like "widgetType:groupId:relativeIndex"
   property string searchText: ""

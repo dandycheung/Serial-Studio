@@ -124,7 +124,6 @@ static QVector<QPair<QColor, QColor>> extractDeviceColors(const QJsonObject& col
  */
 Misc::ThemeManager::ThemeManager() : m_theme(0), m_applyingTheme(false)
 {
-  // Set built-in theme files (others available as extensions)
   // clang-format off
   const QStringList themes = {
       QStringLiteral("default"),
@@ -333,7 +332,7 @@ void Misc::ThemeManager::setTheme(const int index)
   if (index < 0 || index >= m_availableThemes.count())
     filteredIndex = 0;
 
-  // Update the theme name (persist by name for stability across addon changes)
+  // Persist by name for stability across addon changes.
   m_theme     = filteredIndex;
   m_themeName = m_availableThemes.at(filteredIndex);
   m_settings.setValue("ApplicationThemeName", m_themeName);
@@ -380,9 +379,6 @@ void Misc::ThemeManager::setTheme(const int index)
   // Notify QML bindings synchronously
   Q_EMIT themeChanged();
 
-  // Defer palette/color-scheme application to next event-loop iteration
-  // so deleteLater() cleanup completes before ApplicationPaletteChange
-  // events are delivered to QWindows
   const auto palette = m_palette;
   const auto bg      = getColor(QStringLiteral("base"));
   const auto fg      = getColor(QStringLiteral("text"));
@@ -421,8 +417,6 @@ void Misc::ThemeManager::setTheme(const int index)
  */
 void Misc::ThemeManager::loadSystemTheme()
 {
-  // Guard against re-entrant calls from ApplicationPaletteChange events
-  // triggered by setPalette()/setColorScheme() below
   m_applyingTheme = true;
 
   // Get system color scheme

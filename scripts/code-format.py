@@ -32,11 +32,12 @@ sources (.cpp). The id-placement and christmas-tree rules apply only to
 QML files. CRLF/CR line endings are normalized to LF on every processed
 file, regardless of suffix.
 
-Comment-style and AI-narration findings (multi-line `//` runs, `//` as
-the first line of a `{` body, tutorial voice, hedging, rot-references,
-restate-the-code openers, emoji, …) are flag-only — collapsing or
-hoisting comments is a judgement call. Findings are grouped by rule
-into `.code-report` at the repo root for a follow-up human or LLM pass.
+Comment-style and AI-narration findings (multi-line `//` runs, tutorial
+voice, hedging, rot-references, restate-the-code openers, emoji, …) are
+flag-only — collapsing comments is a judgement call. Banner runs
+(`//---` rules around a label, or QML `//` sandwich) are skipped.
+Findings are grouped by rule into `.code-report` at the repo root for a
+follow-up human or LLM pass.
 
 Wrap a region with `// code-format off` / `// code-format on` to disable
 every rule between the fences (the `/* ... */` equivalent works too).
@@ -872,21 +873,60 @@ def _is_line_comment(line: str) -> bool:
     return stripped.startswith("//")
 
 
+def _is_banner_run(payloads: list[str]) -> bool:
+    """A run of `//` comment payloads is a banner if every line is either
+    empty/punctuation-only (`---`, `===`, blank) or is bracketed by such
+    decorator lines.
+
+    Two shapes count as banners:
+
+      A) Pure decorators only (`//---`, `//===`, `//`-blank).
+      B) Sandwich layout: each non-decorator label line is preceded AND
+         followed (within the run) by a decorator line. This catches the
+         C++ banner (`//---` / `// Section` / `//---`) and the QML banner
+         (`//` / `// Section` / `//`).
+
+    Shape (B) requires the run to start AND end with a decorator line,
+    so a free-standing two-line "// foo / // bar" is still flagged."""
+    def is_decorator(p: str) -> bool:
+        s = p.strip()
+        return s == "" or set(s) <= {"-", "="}
+
+    if all(is_decorator(p) for p in payloads):
+        return True
+
+    # Sandwich detection: must start AND end with a decorator, and every
+    # non-decorator line must be adjacent to a decorator on at least one
+    # side (top or bottom). The intent is "label between rules", possibly
+    # multiple labels stacked.
+    if not payloads or not is_decorator(payloads[0]) or not is_decorator(payloads[-1]):
+        return False
+
+    for idx, p in enumerate(payloads):
+        if is_decorator(p):
+            continue
+        prev_dec = idx > 0 and is_decorator(payloads[idx - 1])
+        next_dec = idx + 1 < len(payloads) and is_decorator(payloads[idx + 1])
+        if not (prev_dec or next_dec):
+            return False
+    return True
+
+
 def find_comment_style_violations(
     lines: list[str], path: Path, fence_mask: list[bool]
 ) -> list[Violation]:
-    """Flag two AI-typical patterns:
+    """Flag the AI-typical multi-line `//` comment pattern.
 
-    - `multi-line-comment`: ≥2 consecutive `//` comment lines. CLAUDE.md
-      caps in-body `//` comments at one line; multi-line narration is
-      flagged for human collapse / removal.
-    - `comment-after-brace`: a `//` line as the first non-blank content
-      inside a `{` block. Hoisting the comment above the block (and often
-      dropping the braces) reads better — see CLAUDE.md "Comments &
-      Doxygen" guidance.
+    - `multi-line-comment`: ≥2 consecutive `//` comment lines that are
+      NOT a banner. CLAUDE.md caps in-body `//` comments at one line;
+      multi-line narration is flagged for human collapse / removal.
 
-    Neither is auto-fixable: collapsing comments loses information,
-    hoisting requires judgement about the surrounding block."""
+    Banner runs (`//---` rules around a label, or QML `//` / `// label` /
+    `//` sandwich) are intentional per CLAUDE.md ("98-dash banners
+    separate concern groups") and skipped here.
+
+    Not auto-fixable: collapsing a real multi-line comment loses
+    information."""
     violations: list[Violation] = []
     n = len(lines)
 
@@ -901,40 +941,22 @@ def find_comment_style_violations(
             i += 1
         run_len = i - run_start
 
-        if run_len >= 2:
-            violations.append(
-                Violation(
-                    path,
-                    run_start + 1,
-                    "multi-line-comment",
-                    f"{run_len} consecutive `//` lines — collapse to one line "
-                    "or drop (CLAUDE.md: in-body comments are one-line section headers)",
-                )
-            )
+        if run_len < 2:
+            continue
 
-    for i, line in enumerate(lines):
-        if fence_mask[i]:
+        payloads = [_comment_payload(lines[k]) or "" for k in range(run_start, run_start + run_len)]
+        if _is_banner_run(payloads):
             continue
-        sanitized = _strip_eol_comment(line)
-        if not sanitized.endswith("{"):
-            continue
-        # Find the next non-blank line
-        j = i + 1
-        while j < n and lines[j].strip() == "":
-            j += 1
-        if j >= n or fence_mask[j]:
-            continue
-        if _is_line_comment(lines[j]):
-            violations.append(
-                Violation(
-                    path,
-                    j + 1,
-                    "comment-after-brace",
-                    "`//` comment as first line of a `{` body — hoist the "
-                    "comment above the block opener (CLAUDE.md: comments label "
-                    "sections, they don't narrate from inside)",
-                )
+
+        violations.append(
+            Violation(
+                path,
+                run_start + 1,
+                "multi-line-comment",
+                f"{run_len} consecutive `//` lines — collapse to one line "
+                "or drop (CLAUDE.md: in-body comments are one-line section headers)",
             )
+        )
 
     return violations
 
@@ -1010,6 +1032,13 @@ _AI_PATTERNS: tuple[tuple[str, "re.Pattern[str]"], ...] = (
     (
         "trailing-ellipsis",
         re.compile(r"\.{3,}\s*$"),
+    ),
+    # Em dash (U+2014) — AI text reaches for "—" where humans type "-" or ",".
+    # In a hand-written codebase the appearance of `—` in a comment is a
+    # strong tell-tale of generated prose.
+    (
+        "em-dash",
+        re.compile(r"—"),
     ),
 )
 
@@ -1253,8 +1282,8 @@ def default_targets() -> list[Path]:
 
 
 # Kinds the script CAN auto-fix in place. Anything else (multi-line-comment,
-# comment-after-brace, ai-*, christmas-tree-once-merged) is flag-only and
-# lives in `.code-report` for human / LLM follow-up.
+# ai-*, christmas-tree-once-merged) is flag-only and lives in `.code-report`
+# for human / LLM follow-up.
 _AUTO_FIXABLE_KINDS = frozenset({
     "line-endings",
     "id-blank-line",
@@ -1271,14 +1300,31 @@ heuristic that often signals AI-generated narration or a CLAUDE.md style
 violation. The script will not auto-fix these — judgement calls belong
 to a human or an LLM that has read the surrounding context.
 
+## Hard formatting constraints (READ BEFORE EDITING)
+
+- **100-column line limit.** Every source line — including comments —
+  must fit in 100 columns. If a fix would push a line past 100 columns,
+  shorten the comment instead of wrapping with prose. Do NOT introduce
+  multi-line `//` runs to "preserve information" — collapse aggressively.
+- **One short line per comment.** In-body comments are single-line
+  section headers, not paragraphs. Target ≤ 80 characters of payload.
+  If you cannot say it in one line, delete the comment — the code is
+  the spec, the commit message holds the why.
+- **Default to deleting.** When in doubt about a flagged comment, the
+  correct fix is almost always removal, not rewording. A shorter file
+  with no comment beats a longer file with a "polished" comment.
+- **Never expand a flagged comment.** The fixer agent's job is to
+  shrink or delete — never to add explanation, context, or narration.
+  If the original comment was 3 lines of AI narration, the fix is one
+  line or zero lines, never 4 lines of "improved" narration.
+
 ## Rules to apply
 
 - **One-line `//` section headers only.** Multi-line `//` blocks should
   collapse to one line or be deleted. Comments label sections; they do
-  not narrate. (CLAUDE.md → "Comments & Doxygen".)
-- **Hoist comments out of `{` bodies.** A `// ...` as the first line
-  inside a `{` block should move above the block. Often the block itself
-  can drop its braces.
+  not narrate. Banner runs (`//---` rules around a label, or QML `//`
+  sandwich) are intentional and not flagged. (CLAUDE.md → "Comments &
+  Doxygen".)
 - **No tutorial voice.** "We", "let's", "now we", "first we", "this is
   a function that..." — none of these belong in source comments.
 - **No throat-clearing.** "Note that...", "Important:", "Keep in mind",

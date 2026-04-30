@@ -238,7 +238,6 @@ int Misc::Utilities::showMessageBox(const QString& text,
   for (auto it = buttonTexts.constBegin(); it != buttonTexts.constEnd(); ++it)
     box.button(it.key())->setText(" " + it.value() + " ");
 
-  // Resize message box
   // clang-format off
   auto *spacer = new QSpacerItem(320, 0, QSizePolicy::Minimum, QSizePolicy::Expanding);
   auto *layout = qobject_cast<QGridLayout *>(box.layout());

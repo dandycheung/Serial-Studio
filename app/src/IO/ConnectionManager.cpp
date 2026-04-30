@@ -912,7 +912,7 @@ void IO::ConnectionManager::setBusType(SerialStudio::BusType type)
 
     m_devices[0] = std::move(dm);
   } else {
-    // No driver for this bus type — remove device 0 entirely
+    // No driver for this bus type: remove device 0 entirely.
     auto existing = m_devices.find(0);
     if (existing != m_devices.end()) {
       if (existing->second)
@@ -1263,11 +1263,11 @@ IO::FrameConfig IO::ConnectionManager::buildFrameConfig(int deviceId) const
 {
   const auto opMode = AppState::instance().operationMode();
 
-  // QuickPlot/ConsoleOnly have fixed configs — use AppState
+  // QuickPlot/ConsoleOnly have fixed configs; defer to AppState.
   if (opMode == SerialStudio::QuickPlot || opMode == SerialStudio::ConsoleOnly)
     return AppState::instance().frameConfig();
 
-  // ProjectFile mode — read from source settings
+  // ProjectFile mode: read from source settings.
   FrameConfig cfg;
   cfg.operationMode = opMode;
 

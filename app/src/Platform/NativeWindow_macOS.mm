@@ -217,7 +217,7 @@ void NativeWindow::addWindow(QObject *window, const QString &color)
  */
 void NativeWindow::onThemeChanged()
 {
-  // Nothing to do...
+  // No-op
 }
 
 /**
@@ -225,7 +225,7 @@ void NativeWindow::onThemeChanged()
  */
 void NativeWindow::onActiveChanged()
 {
-  // Nothing to do...
+  // No-op
 }
 
 /**

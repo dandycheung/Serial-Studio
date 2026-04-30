@@ -422,7 +422,7 @@ void Sessions::Player::openSessionInternal(int sessionId)
     if (sources.size() > 1)
       buildMultiSourceMapping();
   } else {
-    // QuickPlot fallback — register synthetic headers
+    // QuickPlot fallback: register synthetic headers.
     QStringList headers;
     headers.reserve(static_cast<int>(m_columnUniqueIds.size()));
     for (int uid : m_columnUniqueIds)

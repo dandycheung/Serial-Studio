@@ -80,7 +80,9 @@ static void attachToConsole()
     FILE* fp = nullptr;
     (void)freopen_s(&fp, "CONOUT$", "w", stdout);
     (void)freopen_s(&fp, "CONOUT$", "w", stderr);
+    // code-verify off  -- raw stdio is the only path before Qt is up
     printf("\n");
+    // code-verify on
   }
 }
 

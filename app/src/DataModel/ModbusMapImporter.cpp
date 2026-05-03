@@ -372,19 +372,30 @@ void DataModel::ModbusMapImporter::confirmImport()
 
   loadRegisterGroups(blocks);
 
-  // Open project and prompt user to save
-  ProjectModel::instance().openJsonFile(temp_path);
-  if (ProjectModel::instance().saveJsonFile(true)) {
-    QFile::remove(temp_path);
-    Misc::Utilities::showMessageBox(tr("Successfully imported %1 registers in %2 groups.")
-                                      .arg(m_registers.count())
-                                      .arg(blocks.count()),
-                                    tr("The project editor is now open for customization."),
-                                    QMessageBox::Information,
-                                    tr("Modbus Import Complete"));
-  } else {
-    QFile::remove(temp_path);
-  }
+  // Open project and prompt save; single-shot listener cleans up either way
+  auto& pm = ProjectModel::instance();
+  pm.openJsonFile(temp_path);
+
+  const int registerCount = m_registers.count();
+  const int blockCount    = blocks.count();
+  QObject::connect(
+    &pm,
+    &ProjectModel::saveDialogCompleted,
+    this,
+    [temp_path, registerCount, blockCount](bool accepted) {
+      QFile::remove(temp_path);
+      if (!accepted)
+        return;
+
+      Misc::Utilities::showMessageBox(
+        tr("Successfully imported %1 registers in %2 groups.").arg(registerCount).arg(blockCount),
+        tr("The project editor is now open for customization."),
+        QMessageBox::Information,
+        tr("Modbus Import Complete"));
+    },
+    Qt::SingleShotConnection);
+
+  (void)pm.saveJsonFile(true);
 }
 
 /**

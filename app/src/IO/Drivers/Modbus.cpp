@@ -833,26 +833,35 @@ void IO::Drivers::Modbus::generateProject()
   file.write(doc.toJson(QJsonDocument::Indented));
   file.close();
 
-  // Load and prompt save
-  DataModel::ProjectModel::instance().openJsonFile(temp_path);
-  if (DataModel::ProjectModel::instance().saveJsonFile(true)) {
-    QFile::remove(temp_path);
+  // Load and prompt save; single-shot listener cleans up either way
+  auto& pm = DataModel::ProjectModel::instance();
+  pm.openJsonFile(temp_path);
 
-    // Count total datasets for the success message
-    int total_datasets = 0;
-    for (const auto& g : m_registerGroups)
-      total_datasets += g.count;
+  int total_datasets = 0;
+  for (const auto& g : m_registerGroups)
+    total_datasets += g.count;
 
-    Misc::Utilities::showMessageBox(
-      tr("Successfully generated project with %1 groups and %2 datasets.")
-        .arg(m_registerGroups.count())
-        .arg(total_datasets),
-      tr("The project editor is now open for customization."),
-      QMessageBox::Information,
-      tr("Modbus Project Generator"));
-  } else {
-    QFile::remove(temp_path);
-  }
+  const int groupCount = m_registerGroups.count();
+  QObject::connect(
+    &pm,
+    &DataModel::ProjectModel::saveDialogCompleted,
+    this,
+    [temp_path, groupCount, total_datasets](bool accepted) {
+      QFile::remove(temp_path);
+      if (!accepted)
+        return;
+
+      Misc::Utilities::showMessageBox(
+        tr("Successfully generated project with %1 groups and %2 datasets.")
+          .arg(groupCount)
+          .arg(total_datasets),
+        tr("The project editor is now open for customization."),
+        QMessageBox::Information,
+        tr("Modbus Project Generator"));
+    },
+    Qt::SingleShotConnection);
+
+  (void)pm.saveJsonFile(true);
 }
 
 /**

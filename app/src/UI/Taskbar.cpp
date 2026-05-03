@@ -1779,10 +1779,13 @@ void UI::Taskbar::createWorkspace(const QString& name)
 /**
  * @brief Deletes or hides a workspace.
  *
- * For user-defined workspaces (id >= 1000), permanently deletes the workspace.
- * For auto-generated group workspaces (id >= 0, id < 1000), hides the group
- * from the workspace list. Special workspaces (Overview, All Data, per-source)
- * cannot be deleted.
+ * Routing depends on whether the project is in customize mode:
+ *  - Customised: user-defined workspaces (id >= 1000) are deleted permanently
+ *    via ProjectModel::deleteWorkspace.
+ *  - Auto: per-group auto-workspaces (id >= 1002) are hidden via hideGroup(id
+ *    - 1002), which removes the workspace tab without flipping customize.
+ *    The Overview (1000) and All Data (1001) auto-workspaces are not
+ *    individually deletable in auto mode -- they reflect the whole project.
  *
  * If the affected workspace is active, switches to the first available.
  */
@@ -1790,17 +1793,20 @@ void UI::Taskbar::deleteWorkspace(int workspaceId)
 {
   auto* pm = &DataModel::ProjectModel::instance();
 
-  // User-defined workspace: delete permanently
-  if (workspaceId >= 1000)
-    pm->deleteWorkspace(workspaceId);
-
-  // Auto-generated group workspace: hide it
-  else if (workspaceId >= 0)
-    pm->hideGroup(workspaceId);
-
-  // Special workspaces (id < 0): not deletable
-  else
-    return;
+  if (pm->customizeWorkspaces()) {
+    // In customize mode, user owns m_workspaces and can delete any entry
+    if (workspaceId >= 1000)
+      pm->deleteWorkspace(workspaceId);
+    else
+      return;
+  } else {
+    // Auto mode: per-group workspaces map to group IDs via the 1002 offset
+    static constexpr int kPerGroupIdStart = 1002;
+    if (workspaceId >= kPerGroupIdStart)
+      pm->hideGroup(workspaceId - kPerGroupIdStart);
+    else
+      return;
+  }
 
   // Switch away when the active workspace was deleted or hidden
   if (m_activeGroupId == workspaceId) {

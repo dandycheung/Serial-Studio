@@ -107,6 +107,7 @@ signals:
   void tablesChanged();
   void customizeWorkspacesChanged();
   void lockedChanged();
+  void saveDialogCompleted(bool accepted);
 
   void groupAdded(int groupId);
   void groupDeleted();
@@ -288,6 +289,10 @@ public slots:
   Q_INVOKABLE int addWorkspace(const QString& title);
   Q_INVOKABLE int autoGenerateWorkspaces();
   Q_INVOKABLE [[nodiscard]] QString workspaceTitle(int workspaceId) const;
+  Q_INVOKABLE [[nodiscard]] QVariantList hiddenGroupsSummary() const;
+  void resetWorkspacesToAuto();
+  void confirmResetWorkspacesToAuto();
+  void showAllHiddenGroups();
 
   void deleteWorkspace(int workspaceId);
   void renameWorkspace(int workspaceId, const QString& title);
@@ -341,13 +346,15 @@ private:
 
   [[nodiscard]] std::vector<Workspace> buildAutoWorkspaces() const;
 
-  void regenerateAutoWorkspaces();
+  void regenerateAutoWorkspacesUnnotified();
 
   [[nodiscard]] QMap<int, int> widgetTypeCountsForGroup(const Group& g) const;
 
   void shiftWorkspaceRefsAfterGroupDelete(int deletedGid, const QMap<int, int>& deletedTypeCounts);
 
   void shiftWorkspaceRefsAfterDatasetDelete(int groupId, const QMap<int, int>& datasetTypeCounts);
+
+  void shiftHiddenGroupIdsAfterGroupDelete(int deletedGid);
 
   bool mergeAutoWorkspaceUpdates();
 

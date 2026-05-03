@@ -266,6 +266,10 @@ API::CommandResponse API::Handlers::WorkspacesHandler::add(const QString& id,
 
 /**
  * @brief Deletes a workspace. No-op if id not found.
+ *
+ * Requires customize mode -- in auto mode the workspace list is derived from
+ * groups and an explicit delete would silently flip the project into customize
+ * mode. Auto-mode taskbar deletion goes through hideGroup instead.
  */
 API::CommandResponse API::Handlers::WorkspacesHandler::remove(const QString& id,
                                                               const QJsonObject& params)
@@ -274,8 +278,15 @@ API::CommandResponse API::Handlers::WorkspacesHandler::remove(const QString& id,
     return CommandResponse::makeError(
       id, ErrorCode::MissingParam, QStringLiteral("Missing required parameter: id"));
 
+  auto& pm = DataModel::ProjectModel::instance();
+  if (!pm.customizeWorkspaces())
+    return CommandResponse::makeError(
+      id,
+      ErrorCode::InvalidParam,
+      QStringLiteral("customizeWorkspaces is off; call project.workspaces.customize.set first"));
+
   const int wid = params.value(QStringLiteral("id")).toInt();
-  DataModel::ProjectModel::instance().deleteWorkspace(wid);
+  pm.deleteWorkspace(wid);
 
   QJsonObject result;
   result[QStringLiteral("id")]      = wid;
@@ -285,6 +296,8 @@ API::CommandResponse API::Handlers::WorkspacesHandler::remove(const QString& id,
 
 /**
  * @brief Renames a workspace. No-op if id not found.
+ *
+ * Requires customize mode for the same reason as remove().
  */
 API::CommandResponse API::Handlers::WorkspacesHandler::rename(const QString& id,
                                                               const QJsonObject& params)
@@ -297,13 +310,20 @@ API::CommandResponse API::Handlers::WorkspacesHandler::rename(const QString& id,
     return CommandResponse::makeError(
       id, ErrorCode::MissingParam, QStringLiteral("Missing required parameter: title"));
 
+  auto& pm = DataModel::ProjectModel::instance();
+  if (!pm.customizeWorkspaces())
+    return CommandResponse::makeError(
+      id,
+      ErrorCode::InvalidParam,
+      QStringLiteral("customizeWorkspaces is off; call project.workspaces.customize.set first"));
+
   const int wid          = params.value(QStringLiteral("id")).toInt();
   const QString newTitle = params.value(QStringLiteral("title")).toString();
   if (newTitle.trimmed().isEmpty())
     return CommandResponse::makeError(
       id, ErrorCode::InvalidParam, QStringLiteral("Workspace title cannot be empty"));
 
-  DataModel::ProjectModel::instance().renameWorkspace(wid, newTitle);
+  pm.renameWorkspace(wid, newTitle);
 
   QJsonObject result;
   result[QStringLiteral("id")]      = wid;
@@ -377,8 +397,9 @@ API::CommandResponse API::Handlers::WorkspacesHandler::customizeSet(const QStrin
 /**
  * @brief Attaches a widget ref to a workspace.
  *
- * Implicitly flips customizeWorkspaces on if it wasn't already -- the project
- * must be in customize mode to persist a widget ref.
+ * Requires customize mode. Auto-mode callers must call project.workspaces.
+ * customize.set first; otherwise the auto-IDs are unstable across structural
+ * edits and a soft-promote could land the ref on the wrong workspace.
  */
 API::CommandResponse API::Handlers::WorkspacesHandler::widgetAdd(const QString& id,
                                                                  const QJsonObject& params)
@@ -395,12 +416,27 @@ API::CommandResponse API::Handlers::WorkspacesHandler::widgetAdd(const QString& 
       return CommandResponse::makeError(
         id, ErrorCode::MissingParam, QStringLiteral("Missing required parameter: %1").arg(key));
 
+  auto& pm = DataModel::ProjectModel::instance();
+  if (!pm.customizeWorkspaces())
+    return CommandResponse::makeError(
+      id,
+      ErrorCode::InvalidParam,
+      QStringLiteral("customizeWorkspaces is off; call project.workspaces.customize.set first"));
+
   const int wid      = params.value(QStringLiteral("workspaceId")).toInt();
   const int wtype    = params.value(QStringLiteral("widgetType")).toInt();
   const int gid      = params.value(QStringLiteral("groupId")).toInt();
   const int relIndex = params.value(QStringLiteral("relativeIndex")).toInt();
 
-  DataModel::ProjectModel::instance().addWidgetToWorkspace(wid, wtype, gid, relIndex);
+  // Validate the target workspace exists; reject stale IDs explicitly
+  const auto& wsList = pm.editorWorkspaces();
+  const auto exists  = std::any_of(
+    wsList.begin(), wsList.end(), [wid](const auto& ws) { return ws.workspaceId == wid; });
+  if (!exists)
+    return CommandResponse::makeError(
+      id, ErrorCode::InvalidParam, QStringLiteral("Workspace not found: %1").arg(wid));
+
+  pm.addWidgetToWorkspace(wid, wtype, gid, relIndex);
 
   QJsonObject result;
   result[QStringLiteral("workspaceId")]   = wid;
@@ -429,12 +465,19 @@ API::CommandResponse API::Handlers::WorkspacesHandler::widgetRemove(const QStrin
       return CommandResponse::makeError(
         id, ErrorCode::MissingParam, QStringLiteral("Missing required parameter: %1").arg(key));
 
+  auto& pm = DataModel::ProjectModel::instance();
+  if (!pm.customizeWorkspaces())
+    return CommandResponse::makeError(
+      id,
+      ErrorCode::InvalidParam,
+      QStringLiteral("customizeWorkspaces is off; call project.workspaces.customize.set first"));
+
   const int wid      = params.value(QStringLiteral("workspaceId")).toInt();
   const int wtype    = params.value(QStringLiteral("widgetType")).toInt();
   const int gid      = params.value(QStringLiteral("groupId")).toInt();
   const int relIndex = params.value(QStringLiteral("relativeIndex")).toInt();
 
-  DataModel::ProjectModel::instance().removeWidgetFromWorkspace(wid, wtype, gid, relIndex);
+  pm.removeWidgetFromWorkspace(wid, wtype, gid, relIndex);
 
   QJsonObject result;
   result[QStringLiteral("workspaceId")]   = wid;

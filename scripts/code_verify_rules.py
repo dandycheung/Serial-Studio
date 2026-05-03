@@ -906,6 +906,58 @@ def _is_vendored_path(path: Path) -> bool:
     return any(hint in s for hint in _NARRATION_VENDORED_PATH_HINTS)
 
 
+# ---------------------------------------------------------------------------
+# Qt-style preferences for console output and stream formatting
+# ---------------------------------------------------------------------------
+#
+# CLAUDE.md does not call these out by name, but they are universally Qt-style
+# violations: a Qt application that mixes `printf` / `std::cout` / `std::endl`
+# with `qDebug` / `\n` is harder to retarget at the Qt logging-categories
+# infrastructure, breaks message-handler routing, and pays a synchronous-flush
+# cost on every emission. Two cases legitimately need raw stdio (the qDebug
+# message handler itself, and Windows console attachment) -- those wrap the
+# region in `// code-verify off` to silence the rule with intent.
+
+_STDIO_PATTERNS = [
+    (re.compile(r"\bstd::(?:cout|cerr|clog)\b"),
+     "qt-prefer-qdebug",
+     "`std::cout` / `std::cerr` -- prefer `qDebug()` / `qWarning()` "
+     "(routes through the Qt message handler and the Console widget)"),
+    (re.compile(r"^\s*#include\s+<iostream>"),
+     "qt-prefer-qdebug",
+     "`<iostream>` -- prefer `<QDebug>` (Qt streams integrate with the message handler)"),
+    (re.compile(r"\bprintf\s*\("),
+     "qt-prefer-qdebug",
+     "`printf(...)` -- prefer `qDebug()` (Qt routes through the message handler "
+     "and the Console widget)"),
+    (re.compile(r"\bstd::endl\b"),
+     "qt-prefer-newline",
+     "`std::endl` flushes the stream on every line -- use `'\\n'` "
+     "(or Qt::endl when explicit flushing is intentional)"),
+]
+
+
+def _stdio_findings(src_text: str, path: Path,
+                    fence_mask: list[bool]) -> list[Finding]:
+    """Flag raw-stdio output (`std::cout`, `<iostream>`, `printf`, `std::endl`)
+    in Qt source code. Strings and `//` line comments are masked first so
+    `// printf("...")` in prose doesn't fire."""
+    if path.suffix not in (".cpp", ".cc", ".cxx", ".mm", ".h", ".hpp", ".hxx"):
+        return []
+    if _is_vendored_path(path):
+        return []
+    out: list[Finding] = []
+    for i, raw in enumerate(src_text.split("\n"), start=1):
+        if i - 1 < len(fence_mask) and fence_mask[i - 1]:
+            continue
+        scrubbed = _strip_strings_and_line_comments(raw)
+        for pat, kind, msg in _STDIO_PATTERNS:
+            if pat.search(scrubbed):
+                out.append(Finding(i, kind, msg))
+                break
+    return out
+
+
 _TRAILING_DOXY_RE = re.compile(r"/\*\*<")
 
 
@@ -1051,6 +1103,7 @@ def analyze(path: Path, src_text: str, fence_mask: list[bool]) -> list[Finding]:
         out.extend(_cpp_rules(src_text.encode("utf-8"), path, fence_mask))
         out.extend(_comment_narration_findings(src_text, path, fence_mask))
         out.extend(_trailing_doxy_findings(src_text, path, fence_mask))
+        out.extend(_stdio_findings(src_text, path, fence_mask))
         return out
     if suffix == ".qml":
         out.extend(_qml_rules(src_text, path, fence_mask))

@@ -204,23 +204,32 @@ void DataModel::DBCImporter::confirmImport()
   file.write(doc.toJson(QJsonDocument::Indented));
   file.close();
 
-  ProjectModel::instance().openJsonFile(tempPath);
+  auto& pm = ProjectModel::instance();
+  pm.openJsonFile(tempPath);
 
-  if (ProjectModel::instance().saveJsonFile(true)) {
-    QFile::remove(tempPath);
+  // Single-shot listener fires for both accept and reject; cleanup runs in both
+  const int messageCount = m_messages.count();
+  const int signalCount  = countTotalSignals(m_messages);
+  QObject::connect(
+    &pm,
+    &ProjectModel::saveDialogCompleted,
+    this,
+    [tempPath, messageCount, signalCount](bool accepted) {
+      QFile::remove(tempPath);
+      if (!accepted)
+        return;
 
-    // clang-format off
-    Misc::Utilities::showMessageBox(
+      Misc::Utilities::showMessageBox(
         tr("Successfully imported DBC file with %1 messages and %2 signals.")
-            .arg(m_messages.count())
-            .arg(countTotalSignals(m_messages)),
+          .arg(messageCount)
+          .arg(signalCount),
         tr("The project editor is now open for customization."),
         QMessageBox::Information,
         tr("DBC Import Complete"));
-    // clang-format on
-  } else {
-    QFile::remove(tempPath);
-  }
+    },
+    Qt::SingleShotConnection);
+
+  (void)pm.saveJsonFile(true);
 }
 
 /**

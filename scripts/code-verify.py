@@ -1672,6 +1672,15 @@ _ADVISORY_KINDS = frozenset({
     # signal because the fix is "delete the trailing block" rather than
     # "delete the leading block".
     "doc-trailing-member",
+    # Raw stdio in Qt code -- `std::cout`, `<iostream>`, `printf` should
+    # route through `qDebug()` / `qWarning()` so the message handler and
+    # the Console widget see the output. Two known exceptions
+    # (the message handler itself, Windows console attachment) wrap their
+    # call in `// code-verify off` to declare intent.
+    "qt-prefer-qdebug",
+    # `std::endl` flushes the stream every line -- `'\n'` is faster and
+    # more idiomatic for Qt streams. `Qt::endl` is the explicit-flush form.
+    "qt-prefer-newline",
 })
 
 
@@ -1791,6 +1800,20 @@ the kinds below are short labels.
   "ideally", filler "simply"/"basically"). Vendored / upstream-prose
   files (`ThirdParty/`, `SimpleCrypt`, `lemonsqueezy/`) are exempt.
   `@brief` lines are also exempt to keep false-positives low.
+- `doc-header-function-block` — function doxygen block above a non-inline
+  member-function declaration in a header. Per CLAUDE.md "Headers (.h) —
+  strict rule": only `/** @brief */` above type-level definitions belongs
+  in a header. Delete the block.
+- `doc-trailing-member` — trailing-style `/**< description */` doxygen on
+  a header member variable. Same rule, separate signal because the fix is
+  to drop the trailing block rather than the leading one.
+- `qt-prefer-qdebug` — `std::cout`, `std::cerr`, `<iostream>`, or `printf`
+  in Qt code. Routes through the Qt message handler / Console widget when
+  using `qDebug` / `qWarning` instead. Two known exceptions (the message
+  handler implementation itself, Windows console attachment before Qt is
+  up) wrap the call in `// code-verify off`.
+- `qt-prefer-newline` — `std::endl` flushes the underlying buffer on every
+  emission. Use `'\n'` (or `Qt::endl` when explicit flushing is the point).
 
 ## Anonymous-namespace helpers (`cxx-anonymous-namespace`)
 

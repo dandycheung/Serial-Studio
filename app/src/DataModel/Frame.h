@@ -152,6 +152,7 @@ inline constexpr KeyView WorkspaceId("workspaceId");
 inline constexpr KeyView WidgetRefs("widgetRefs");
 inline constexpr KeyView WidgetType("widgetType");
 inline constexpr KeyView RelativeIndex("relativeIndex");
+inline constexpr KeyView CustomizeWorkspaces("customizeWorkspaces");
 
 inline constexpr KeyView Virtual("virtual");
 

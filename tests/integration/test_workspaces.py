@@ -433,6 +433,251 @@ def test_synthetic_workspace_ids_stable_across_group_add(api_client, clean_state
 
 
 # ---------------------------------------------------------------------------
+# REGRESSION -- workspace JSON round-trip
+# ---------------------------------------------------------------------------
+
+@pytest.mark.project
+def test_save_in_auto_mode_omits_workspace_keys(api_client, clean_state):
+    """
+    Auto state must NOT serialize customizeWorkspaces or workspaces -- the auto
+    layout is derived on load. Older builds reading the file would otherwise
+    auto-promote a stale list into customize mode.
+    """
+    _add_group_with_datasets(api_client, "G0", widget_type=0, dataset_count=1)
+    _add_group_with_datasets(api_client, "G1", widget_type=0, dataset_count=1)
+    time.sleep(0.3)
+
+    config = api_client.command("project.exportJson")["config"]
+    assert "customizeWorkspaces" not in config, (
+        "Auto mode must not emit customizeWorkspaces; older builds would promote it"
+    )
+    assert "workspaces" not in config, (
+        "Auto mode must not emit workspaces array; the layout is derived"
+    )
+
+
+@pytest.mark.project
+def test_save_in_customize_mode_emits_both_keys(api_client, clean_state):
+    """Customize state must serialize both keys verbatim."""
+    _add_group_with_datasets(api_client, "G0", widget_type=0, dataset_count=1)
+    time.sleep(0.3)
+
+    _customize_set(api_client, True)
+    time.sleep(0.15)
+
+    config = api_client.command("project.exportJson")["config"]
+    assert config.get("customizeWorkspaces") is True
+    assert isinstance(config.get("workspaces"), list)
+
+
+@pytest.mark.project
+def test_round_trip_auto_state_preserves_flag(api_client, clean_state):
+    """
+    Save a project in auto mode, reload it, and confirm the customize flag
+    stays false. This is the bug that triggered the audit -- before the fix,
+    the writer always emitted customizeWorkspaces=false plus a workspaces
+    array, and the loader's pre-v3.3 detection would auto-promote it.
+    """
+    _add_group_with_datasets(api_client, "A", widget_type=0, dataset_count=1)
+    _add_group_with_datasets(api_client, "B", widget_type=0, dataset_count=1)
+    time.sleep(0.3)
+
+    config = api_client.command("project.exportJson")["config"]
+
+    api_client.create_new_project(title="Reload Target")
+    time.sleep(0.3)
+    api_client.command("project.loadFromJSON", {"config": config})
+    time.sleep(0.3)
+
+    assert _customize_get(api_client)["enabled"] is False, (
+        "Round-trip must not promote auto-saved project to customized"
+    )
+
+
+@pytest.mark.project
+def test_round_trip_customized_state_preserves_list(api_client, clean_state):
+    """Customized projects round-trip with their workspace list intact."""
+    _add_group_with_datasets(api_client, "G0", widget_type=0, dataset_count=1)
+    time.sleep(0.3)
+
+    _customize_set(api_client, True)
+    time.sleep(0.15)
+    custom_id = _add_workspace(api_client, "Hand-picked")["id"]
+    time.sleep(0.15)
+
+    config = api_client.command("project.exportJson")["config"]
+
+    api_client.create_new_project(title="Reload Target")
+    time.sleep(0.3)
+    api_client.command("project.loadFromJSON", {"config": config})
+    time.sleep(0.3)
+
+    assert _customize_get(api_client)["enabled"] is True
+    ids = [w["id"] for w in _list_workspaces(api_client)["workspaces"]]
+    assert custom_id in ids, (
+        f"Customized workspace {custom_id} missing after round-trip; got {ids}"
+    )
+
+
+@pytest.mark.project
+def test_legacy_pre_v33_format_promotes_to_customized(api_client, clean_state):
+    """
+    Pre-v3.3 files have no customizeWorkspaces key but may carry a hand-edited
+    workspaces array. The loader must promote them to customize=true so the
+    user does not lose their manual layout.
+    """
+    api_client.create_new_project(title="Legacy")
+    time.sleep(0.3)
+
+    config = api_client.command("project.exportJson")["config"]
+
+    # Strip the v3.3 flag, inject a hand-crafted workspaces array
+    config.pop("customizeWorkspaces", None)
+    config["workspaces"] = [{
+        "workspaceId": 5000,
+        "title": "Legacy View",
+        "icon": "",
+        "widgetRefs": [],
+    }]
+
+    api_client.create_new_project(title="Loader")
+    time.sleep(0.3)
+    api_client.command("project.loadFromJSON", {"config": config})
+    time.sleep(0.3)
+
+    assert _customize_get(api_client)["enabled"] is True, (
+        "Legacy file with workspaces array must promote to customize=true"
+    )
+
+    titles = [w["title"] for w in _list_workspaces(api_client)["workspaces"]]
+    assert "Legacy View" in titles
+
+
+@pytest.mark.project
+def test_v33_buggy_save_does_not_re_promote(api_client, clean_state):
+    """
+    A 3.3 file written by the buggy serializer carries customizeWorkspaces=false
+    AND a stale workspaces array (the auto list at save time). The fixed loader
+    must honour the explicit flag and NOT promote.
+    """
+    api_client.create_new_project(title="Buggy 3.3 file")
+    time.sleep(0.3)
+
+    config = api_client.command("project.exportJson")["config"]
+    config["customizeWorkspaces"] = False
+    config["workspaces"] = [{
+        "workspaceId": 1000,
+        "title": "Stale Auto",
+        "icon": "qrc:/icons/panes/overview.svg",
+        "widgetRefs": [],
+    }]
+
+    api_client.create_new_project(title="Loader")
+    time.sleep(0.3)
+    api_client.command("project.loadFromJSON", {"config": config})
+    time.sleep(0.3)
+
+    assert _customize_get(api_client)["enabled"] is False, (
+        "Explicit customizeWorkspaces=false must be honoured even with a workspaces array"
+    )
+
+
+# ---------------------------------------------------------------------------
+# REGRESSION -- toggling Customize seeds the editor immediately
+# ---------------------------------------------------------------------------
+
+@pytest.mark.project
+def test_customize_off_to_on_seeds_immediately(api_client, clean_state):
+    """
+    The "two clicks" bug: setCustomizeWorkspaces(true) used to leave m_workspaces
+    empty if it had been emptied earlier in the session. The fix seeds from
+    buildAutoWorkspaces() on every Off->On transition.
+    """
+    _add_group_with_datasets(api_client, "A", widget_type=0, dataset_count=1)
+    _add_group_with_datasets(api_client, "B", widget_type=0, dataset_count=1)
+    time.sleep(0.3)
+
+    # Auto state: workspaces are derived
+    auto_count = _list_workspaces(api_client)["count"]
+    assert auto_count >= 1, "Two-group project must produce >=1 auto workspace"
+
+    _customize_set(api_client, True)
+    time.sleep(0.2)
+
+    # The first click must populate the list, not require a second toggle
+    customized = _list_workspaces(api_client)
+    assert customized["customizeEnabled"] is True
+    assert customized["count"] == auto_count, (
+        f"Off->On must seed from auto list (had {auto_count}, now {customized['count']})"
+    )
+
+
+@pytest.mark.project
+def test_customize_off_discards_user_edits(api_client, clean_state):
+    """
+    On->Off is destructive by design -- it drops user customisations and
+    rebuilds the synthetic layout. The new resetWorkspacesToAuto helper makes
+    this an explicit, named operation.
+    """
+    _add_group_with_datasets(api_client, "A", widget_type=0, dataset_count=1)
+    time.sleep(0.3)
+
+    _customize_set(api_client, True)
+    time.sleep(0.15)
+    user_id = _add_workspace(api_client, "User Workspace")["id"]
+    time.sleep(0.15)
+
+    _customize_set(api_client, False)
+    time.sleep(0.2)
+
+    ids = [w["id"] for w in _list_workspaces(api_client)["workspaces"]]
+    assert user_id not in ids, (
+        "Off transition must drop user-added workspaces, not preserve them"
+    )
+
+
+# ---------------------------------------------------------------------------
+# REGRESSION -- API guards reject mutations in auto mode
+# ---------------------------------------------------------------------------
+
+@pytest.mark.project
+def test_widget_add_in_auto_mode_is_rejected(api_client, clean_state):
+    """
+    The API must refuse widget mutations while customize is off; auto-IDs are
+    unstable across structural edits and a soft-promote could land the ref on
+    the wrong workspace.
+    """
+    _add_group_with_datasets(api_client, "G", widget_type=0, dataset_count=1)
+    time.sleep(0.3)
+
+    auto = _list_workspaces(api_client)["workspaces"]
+    if not auto:
+        pytest.skip("Project produced no auto workspaces")
+    auto_id = auto[0]["id"]
+
+    with pytest.raises(APIError) as ei:
+        _widget_add(api_client, auto_id, widget_type=1, group_id=0, relative_index=0)
+    assert ei.value.code == "INVALID_PARAM"
+    assert "customize" in str(ei.value).lower()
+
+
+@pytest.mark.project
+def test_workspace_remove_in_auto_mode_is_rejected(api_client, clean_state):
+    """API workspace deletion requires customize mode; taskbar uses hideGroup."""
+    _add_group_with_datasets(api_client, "G", widget_type=0, dataset_count=1)
+    time.sleep(0.3)
+
+    auto = _list_workspaces(api_client)["workspaces"]
+    if not auto:
+        pytest.skip("Project produced no auto workspaces")
+    auto_id = auto[0]["id"]
+
+    with pytest.raises(APIError) as ei:
+        _delete_workspace(api_client, auto_id)
+    assert ei.value.code == "INVALID_PARAM"
+
+
+# ---------------------------------------------------------------------------
 # Helpers that use available API commands
 # ---------------------------------------------------------------------------
 

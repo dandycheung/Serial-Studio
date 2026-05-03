@@ -124,8 +124,12 @@ Widgets.Pane {
             ToolTip.text: qsTr("Edit workspaces manually")
             checked: Cpp_JSON_ProjectModel.customizeWorkspaces
             icon.source: "qrc:/icons/project-editor/actions/customize.svg"
-            onClicked: Cpp_JSON_ProjectModel.customizeWorkspaces =
-                       !Cpp_JSON_ProjectModel.customizeWorkspaces
+            onClicked: {
+              if (Cpp_JSON_ProjectModel.customizeWorkspaces)
+                Cpp_JSON_ProjectModel.confirmResetWorkspacesToAuto()
+              else
+                Cpp_JSON_ProjectModel.customizeWorkspaces = true
+            }
           }
 
           Item { Layout.fillWidth: true }
@@ -208,13 +212,30 @@ Widgets.Pane {
           }
         }
 
-        Label {
-          opacity: 0.5
-          color: Cpp_ThemeManager.colors["text"]
+        ColumnLayout {
+          spacing: 8
           anchors.centerIn: parent
           visible: list.count === 0
-          horizontalAlignment: Text.AlignHCenter
-          text: qsTr("No workspaces.")
+
+          Label {
+            opacity: 0.5
+            color: Cpp_ThemeManager.colors["text"]
+            font: Cpp_Misc_CommonFonts.uiFont
+            Layout.alignment: Qt.AlignHCenter
+            horizontalAlignment: Text.AlignHCenter
+            text: Cpp_JSON_ProjectModel.customizeWorkspaces
+                  ? qsTr("No workspaces. Add one with the toolbar above, "
+                         + "or reset to the auto layout.")
+                  : qsTr("Project has no eligible groups -- add a group "
+                         + "with widgets to populate workspaces.")
+          }
+
+          Button {
+            Layout.alignment: Qt.AlignHCenter
+            text: qsTr("Reset to Auto Layout")
+            visible: Cpp_JSON_ProjectModel.customizeWorkspaces
+            onClicked: Cpp_JSON_ProjectModel.confirmResetWorkspacesToAuto()
+          }
         }
       }
     }

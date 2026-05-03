@@ -270,7 +270,7 @@ DataModel::ProjectModel::ProjectModel()
       return;
     }
 
-    regenerateAutoWorkspaces();
+    regenerateAutoWorkspacesUnnotified();
     Q_EMIT editorWorkspacesChanged();
     Q_EMIT activeWorkspacesChanged();
   });
@@ -1156,11 +1156,13 @@ bool DataModel::ProjectModel::saveJsonFile(const bool askPath)
     dialog->setAcceptMode(QFileDialog::AcceptSave);
     dialog->setFileMode(QFileDialog::AnyFile);
 
-    connect(dialog, &QFileDialog::fileSelected, this, [this, dialog](const QString& path) {
-      dialog->deleteLater();
-
+    // Track whether the user accepted; finished() fires on both accept/reject
+    auto* accepted = new bool(false);
+    connect(dialog, &QFileDialog::fileSelected, this, [this, accepted](const QString& path) {
       if (path.isEmpty())
         return;
+
+      *accepted = true;
 
       // Enforce .ssproj extension -- append when missing
       QString finalPath = path;
@@ -1176,6 +1178,13 @@ bool DataModel::ProjectModel::saveJsonFile(const bool askPath)
 
       m_filePath = finalPath;
       (void)finalizeProjectSave();
+    });
+
+    connect(dialog, &QFileDialog::finished, this, [this, dialog, accepted](int) {
+      const bool ok = *accepted;
+      delete accepted;
+      dialog->deleteLater();
+      Q_EMIT saveDialogCompleted(ok);
     });
 
     dialog->open();
@@ -1267,14 +1276,16 @@ QJsonObject DataModel::ProjectModel::serializeToJson() const
 
   json.insert(Keys::Sources, sourcesArray);
 
-  // Always persist workspaces so other machines / older builds see the same layout
-  json.insert(QStringLiteral("customizeWorkspaces"), m_customizeWorkspaces);
+  // Persist workspaces only when customised; auto layouts are rebuilt on load
+  if (m_customizeWorkspaces) {
+    json.insert(Keys::CustomizeWorkspaces, true);
 
-  QJsonArray workspacesArray;
-  for (const auto& ws : std::as_const(m_workspaces))
-    workspacesArray.append(DataModel::serialize(ws));
+    QJsonArray workspacesArray;
+    for (const auto& ws : std::as_const(m_workspaces))
+      workspacesArray.append(DataModel::serialize(ws));
 
-  json.insert(Keys::Workspaces, workspacesArray);
+    json.insert(Keys::Workspaces, workspacesArray);
+  }
 
   // Hidden auto-generated group IDs
   if (!m_hiddenGroupIds.isEmpty()) {
@@ -1381,6 +1392,7 @@ void DataModel::ProjectModel::newJsonFile()
   m_workspaces.clear();
   m_autoSnapshot.clear();
   m_tables.clear();
+  m_hiddenGroupIds.clear();
   m_customizeWorkspaces = false;
 
   // Clear the lock -- a fresh project starts unlocked with no password set
@@ -1564,11 +1576,8 @@ void DataModel::ProjectModel::openJsonFile()
   dialog->setFileMode(QFileDialog::ExistingFile);
 
   connect(dialog, &QFileDialog::fileSelected, this, [this, dialog](const QString& path) {
-    if (!path.isEmpty()) {
-      // Force ProjectFile mode before loading so the editor reflects the project
-      AppState::instance().setOperationMode(SerialStudio::ProjectFile);
+    if (!path.isEmpty())
       openJsonFile(path);
-    }
 
     dialog->deleteLater();
   });
@@ -1587,6 +1596,9 @@ bool DataModel::ProjectModel::openJsonFile(const QString& path)
 
   if (m_filePath == path && !m_groups.empty())
     return true;
+
+  // Force ProjectFile mode before deserialisation so derived state sees groups
+  AppState::instance().setOperationMode(SerialStudio::ProjectFile);
 
   // Read and validate the JSON file
   QFile file(path);
@@ -1841,10 +1853,11 @@ void DataModel::ProjectModel::loadWidgetSettingsAndWorkspaces(const QJsonObject&
 
   // Customised workspaces load verbatim; auto list is regenerated after groups parse
   m_workspaces.clear();
-  m_customizeWorkspaces = json.value(QStringLiteral("customizeWorkspaces")).toBool(false);
+  m_customizeWorkspaces = json.value(Keys::CustomizeWorkspaces).toBool(false);
 
-  // Pre-v3.3: workspaces array without customize flag -> auto-promote
-  if (!m_customizeWorkspaces && json.contains(Keys::Workspaces)
+  // Pre-v3.3 files have no customize flag; promote on a non-empty workspaces array
+  const bool isLegacyFormat = !json.contains(Keys::CustomizeWorkspaces);
+  if (isLegacyFormat && json.contains(Keys::Workspaces)
       && !json.value(Keys::Workspaces).toArray().isEmpty())
     m_customizeWorkspaces = true;
 
@@ -2215,6 +2228,9 @@ void DataModel::ProjectModel::deleteCurrentGroup()
   if (m_customizeWorkspaces)
     shiftWorkspaceRefsAfterGroupDelete(gid, deletedTypeCounts);
 
+  // Hidden-group IDs are post-renumber too; keep them aligned
+  shiftHiddenGroupIdsAfterGroupDelete(gid);
+
   Q_EMIT groupsChanged();
   Q_EMIT groupDeleted();
   setModified(true);
@@ -2315,6 +2331,9 @@ void DataModel::ProjectModel::deleteCurrentDataset()
     // Empty group was removed -- shift refs using the pre-delete per-type counts
     if (m_customizeWorkspaces)
       shiftWorkspaceRefsAfterGroupDelete(groupId, deletedTypeCounts);
+
+    // Hidden-group IDs are post-renumber too; keep them aligned
+    shiftHiddenGroupIdsAfterGroupDelete(groupId);
 
     Q_EMIT groupsChanged();
     Q_EMIT datasetDeleted(-1);
@@ -3090,8 +3109,9 @@ bool DataModel::ProjectModel::populateFixedLayoutGroup(DataModel::Group& grp,
  */
 void DataModel::ProjectModel::setModified(const bool modified)
 {
-  // Keep a truly empty project clean
-  if (modified && m_groups.empty() && m_actions.empty() && m_tables.empty() && m_workspaces.empty())
+  // Keep a truly empty project clean; user-edit flags count as a real edit
+  if (modified && m_groups.empty() && m_actions.empty() && m_tables.empty() && m_workspaces.empty()
+      && !m_customizeWorkspaces && !m_locked && m_hiddenGroupIds.isEmpty())
     return;
 
   m_modified = modified;
@@ -3230,8 +3250,37 @@ void DataModel::ProjectModel::setGroupLayout(const int groupId, const QJsonObjec
   Q_EMIT widgetSettingsChanged();
 }
 
+// code-verify off
 //--------------------------------------------------------------------------------------------------
 // Workspace CRUD
+//
+// State machine:
+//   - Auto state (m_customizeWorkspaces == false):
+//       m_workspaces is a derived view, rebuilt from m_groups on every
+//       groupsChanged via regenerateAutoWorkspacesUnnotified(). Treat it as
+//       read-only. m_autoSnapshot mirrors m_workspaces.
+//       Persistence: neither customizeWorkspaces nor workspaces emitted in JSON.
+//   - Customized state (m_customizeWorkspaces == true):
+//       m_workspaces is user-owned. Structural changes invoke
+//       mergeAutoWorkspaceUpdates() which adds first-appearance auto refs
+//       without resurrecting user-removed entries (m_autoSnapshot is the
+//       diff baseline).
+//       Persistence: both keys emitted verbatim.
+//
+// Transitions (all via setCustomizeWorkspaces):
+//   - Auto -> Customized: seed m_workspaces from buildAutoWorkspaces() so the
+//     editor never opens empty. Refresh m_autoSnapshot.
+//   - Customized -> Auto: discard user list, regenerate from groups.
+//
+// Auto-IDs use the >= 1000 reserved range:
+//   1000 = Overview, 1001 = All Data, 1002 + groupId = per-group.
+// User-defined IDs are also >= 1000 and never collide with auto-IDs because
+// addWorkspace picks max+1.
+//
+// m_hiddenGroupIds removes per-group entries from buildAutoWorkspaces output;
+// it is independent of customize state and survives Customize toggles.
+//
+// code-verify on
 //--------------------------------------------------------------------------------------------------
 
 /**
@@ -3248,9 +3297,14 @@ int DataModel::ProjectModel::addWorkspace(const QString& title)
   if (!m_customizeWorkspaces)
     setCustomizeWorkspaces(true);
 
-  int maxId = 999;
+  // Reserve [1000, 5000) for auto IDs (Overview=1000, AllData=1001, per-group
+  // 1002+groupId). User IDs start at kUserIdStart so new groups never collide
+  // with hand-picked workspaces, and legacy projects with maxGroupId > 3998
+  // still cannot collide.
+  static constexpr int kUserIdStart = 5000;
+  int maxId                         = kUserIdStart - 1;
   for (const auto& ws : m_workspaces)
-    if (ws.workspaceId > maxId)
+    if (ws.workspaceId >= kUserIdStart && ws.workspaceId > maxId)
       maxId = ws.workspaceId;
 
   DataModel::Workspace ws;
@@ -3969,7 +4023,7 @@ bool DataModel::ProjectModel::customizeWorkspaces() const noexcept
 }
 
 /**
- * @brief Flips the customize switch (Off->On freezes auto layout, On->Off re-seeds it).
+ * @brief Flips the customize switch (Off->On seeds auto layout, On->Off re-seeds it).
  */
 void DataModel::ProjectModel::setCustomizeWorkspaces(const bool enabled)
 {
@@ -3981,8 +4035,13 @@ void DataModel::ProjectModel::setCustomizeWorkspaces(const bool enabled)
 
   m_customizeWorkspaces = enabled;
 
-  if (!enabled)
-    regenerateAutoWorkspaces();
+  // Off->On: seed from auto-list so the editor never opens empty. On->Off: discard
+  if (enabled) {
+    m_workspaces   = buildAutoWorkspaces();
+    m_autoSnapshot = m_workspaces;
+  } else {
+    regenerateAutoWorkspacesUnnotified();
+  }
 
   setModified(true);
   Q_EMIT customizeWorkspacesChanged();
@@ -4064,8 +4123,11 @@ std::vector<DataModel::Workspace> DataModel::ProjectModel::buildAutoWorkspaces()
     result.push_back(std::move(ws));
   }
 
-  // One workspace per group; contiguous groupIds keep IDs out of reserved range
+  // One workspace per group; skip user-hidden groups so the tab stays away
   for (const auto& group : groups) {
+    if (m_hiddenGroupIds.contains(group.groupId))
+      continue;
+
     const auto it = perGroupRefs.constFind(group.groupId);
     if (it == perGroupRefs.constEnd())
       continue;
@@ -4081,14 +4143,15 @@ std::vector<DataModel::Workspace> DataModel::ProjectModel::buildAutoWorkspaces()
 }
 
 /**
- * @brief Refreshes m_workspaces from the current project structure.
+ * @brief Refreshes m_workspaces from the project structure WITHOUT emitting signals.
  *
- * Called on project load and on every groupsChanged signal while
- * customizeWorkspaces is off. Does not touch m_customizeWorkspaces and does
- * not call setModified() -- auto-regeneration is not a user-visible edit.
- * Caller is responsible for emitting editor/activeWorkspacesChanged() when appropriate.
+ * The "Unnotified" suffix is the contract: callers must Q_EMIT
+ * editorWorkspacesChanged() and activeWorkspacesChanged() themselves so they
+ * can batch the emits with their own state changes. setModified() is also a
+ * caller responsibility -- auto-regeneration is not a user-visible edit on its
+ * own, only the surrounding action is.
  */
-void DataModel::ProjectModel::regenerateAutoWorkspaces()
+void DataModel::ProjectModel::regenerateAutoWorkspacesUnnotified()
 {
   if (m_customizeWorkspaces)
     return;
@@ -4211,6 +4274,56 @@ int DataModel::ProjectModel::autoGenerateWorkspaces()
 }
 
 /**
+ * @brief Drops user customisations and returns the project to the synthetic
+ *        auto-layout. Idempotent: a no-op when already in auto mode.
+ */
+void DataModel::ProjectModel::resetWorkspacesToAuto()
+{
+  if (AppState::instance().operationMode() != SerialStudio::ProjectFile)
+    return;
+
+  if (!m_customizeWorkspaces)
+    return;
+
+  m_customizeWorkspaces = false;
+  regenerateAutoWorkspacesUnnotified();
+
+  setModified(true);
+  Q_EMIT customizeWorkspacesChanged();
+  Q_EMIT editorWorkspacesChanged();
+  Q_EMIT activeWorkspacesChanged();
+}
+
+/**
+ * @brief Asks the user to confirm before discarding workspace customisations.
+ */
+void DataModel::ProjectModel::confirmResetWorkspacesToAuto()
+{
+  if (AppState::instance().operationMode() != SerialStudio::ProjectFile)
+    return;
+
+  if (!m_customizeWorkspaces)
+    return;
+
+  if (m_suppressMessageBoxes) {
+    resetWorkspacesToAuto();
+    return;
+  }
+
+  const int choice = Misc::Utilities::showMessageBox(
+    tr("Discard workspace customisations?"),
+    tr("Switching off Customize discards your edits and rebuilds the "
+       "workspace list from the project's groups."),
+    QMessageBox::Warning,
+    tr("Customize Workspaces"),
+    QMessageBox::Yes | QMessageBox::Cancel,
+    QMessageBox::Cancel);
+
+  if (choice == QMessageBox::Yes)
+    resetWorkspacesToAuto();
+}
+
+/**
  * @brief Counts, per dashboard-widget type, how many widgets the given group
  *        contributes to Dashboard::buildWidgetGroups's running type counter.
  */
@@ -4288,6 +4401,30 @@ void DataModel::ProjectModel::shiftWorkspaceRefsAfterGroupDelete(
       Q_ASSERT(r.relativeIndex >= 0);
     }
   }
+}
+
+/**
+ * @brief Updates m_hiddenGroupIds after a group is removed and surviving
+ *        groups are renumbered down by 1.
+ *
+ * Drops the deleted ID; decrements every ID strictly greater than it. Without
+ * this, hiding group 1 then deleting group 0 would silently hide what was
+ * group 2 (now renumbered to 1).
+ */
+void DataModel::ProjectModel::shiftHiddenGroupIdsAfterGroupDelete(int deletedGid)
+{
+  if (m_hiddenGroupIds.isEmpty())
+    return;
+
+  QSet<int> updated;
+  for (const int id : std::as_const(m_hiddenGroupIds)) {
+    if (id == deletedGid)
+      continue;
+
+    updated.insert(id > deletedGid ? id - 1 : id);
+  }
+
+  m_hiddenGroupIds = std::move(updated);
 }
 
 /**
@@ -4401,6 +4538,11 @@ void DataModel::ProjectModel::hideGroup(int groupId)
     return;
 
   m_hiddenGroupIds.insert(groupId);
+
+  // Refresh the auto list so the hidden tab disappears immediately
+  if (!m_customizeWorkspaces)
+    regenerateAutoWorkspacesUnnotified();
+
   setModified(true);
   Q_EMIT editorWorkspacesChanged();
   Q_EMIT activeWorkspacesChanged();
@@ -4416,6 +4558,49 @@ void DataModel::ProjectModel::showGroup(int groupId)
 
   if (!m_hiddenGroupIds.remove(groupId))
     return;
+
+  if (!m_customizeWorkspaces)
+    regenerateAutoWorkspacesUnnotified();
+
+  setModified(true);
+  Q_EMIT editorWorkspacesChanged();
+  Q_EMIT activeWorkspacesChanged();
+}
+
+/**
+ * @brief Returns {id, title} entries for every hidden auto-group, in group order.
+ */
+QVariantList DataModel::ProjectModel::hiddenGroupsSummary() const
+{
+  QVariantList result;
+  for (const auto& g : m_groups) {
+    if (!m_hiddenGroupIds.contains(g.groupId))
+      continue;
+
+    QVariantMap entry;
+    entry[QStringLiteral("id")]    = g.groupId;
+    entry[QStringLiteral("title")] = g.title;
+    result.append(entry);
+  }
+
+  return result;
+}
+
+/**
+ * @brief Restores every hidden auto-group in one shot. No-op when none hidden.
+ */
+void DataModel::ProjectModel::showAllHiddenGroups()
+{
+  if (AppState::instance().operationMode() != SerialStudio::ProjectFile)
+    return;
+
+  if (m_hiddenGroupIds.isEmpty())
+    return;
+
+  m_hiddenGroupIds.clear();
+
+  if (!m_customizeWorkspaces)
+    regenerateAutoWorkspacesUnnotified();
 
   setModified(true);
   Q_EMIT editorWorkspacesChanged();
@@ -4436,9 +4621,9 @@ void DataModel::ProjectModel::showGroup(int groupId)
  */
 void DataModel::ProjectModel::clearTransientState()
 {
-  // Preserve project-owned state whenever a file is loaded
+  // Preserve project-owned state when a file is loaded or workspaces are customised
   const auto opMode = AppState::instance().operationMode();
-  if (opMode == SerialStudio::ProjectFile || !m_filePath.isEmpty())
+  if (opMode == SerialStudio::ProjectFile || !m_filePath.isEmpty() || m_customizeWorkspaces)
     return;
 
   // Discard ephemeral workspace and widget state

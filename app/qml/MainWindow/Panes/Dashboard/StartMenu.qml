@@ -266,6 +266,18 @@ Popup {
 
               root.close()
               root.newWorkspaceRequested()
+            } else if (value === "__show_all_hidden__") {
+              if (_groups.popup)
+                _groups.popup.close()
+
+              Cpp_JSON_ProjectModel.showAllHiddenGroups()
+            } else if (typeof value === "string" && value.startsWith("__show_hidden_")) {
+              if (_groups.popup)
+                _groups.popup.close()
+
+              const gid = parseInt(value.substring("__show_hidden_".length))
+              if (!isNaN(gid))
+                Cpp_JSON_ProjectModel.showGroup(gid)
             } else {
               taskBar.activeGroupId = value
               root.close()
@@ -297,6 +309,24 @@ Popup {
         }
 
         var runtimeMode = (typeof CLI_RUNTIME_MODE !== "undefined" && CLI_RUNTIME_MODE === true)
+        var hiddenGroups = Cpp_JSON_ProjectModel.hiddenGroupsSummary()
+        if (!runtimeMode && hiddenGroups.length > 0) {
+          model.push({"id": "__hidden_separator__", "text": "",
+                       "icon": "", "separator": true})
+          for (var h = 0; h < hiddenGroups.length; ++h) {
+            const hg = hiddenGroups[h]
+            model.push({"id": "__show_hidden_" + hg.id,
+                         "separator": false,
+                         "text": qsTr("Show \"%1\"").arg(hg.title),
+                         "icon": "qrc:/icons/start/groups.svg"})
+          }
+          if (hiddenGroups.length > 1) {
+            model.push({"id": "__show_all_hidden__", "separator": false,
+                         "text": qsTr("Show All Hidden Workspaces"),
+                         "icon": "qrc:/icons/start/groups.svg"})
+          }
+        }
+
         if (!runtimeMode) {
           model.push({"id": "__separator__", "text": "",
                        "icon": "", "separator": true})

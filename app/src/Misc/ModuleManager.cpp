@@ -23,7 +23,10 @@
 
 #include <QSimpleUpdater.h>
 
+// code-verify off  -- raw stdio is required: this file installs the
+// qDebug message handler, so routing through qDebug here would recurse.
 #include <iostream>
+// code-verify on
 #include <QQmlContext>
 
 #include "API/Server.h"
@@ -148,9 +151,11 @@ static void MessageHandler(QtMsgType type, const QMessageLogContext& context, co
   if (output.isEmpty())
     return;
 
-  // Print to stdio
+  // Print to stdio (raw -- this IS the qDebug handler, so qDebug() would recurse)
+  // code-verify off
   std::cout << Widgets::Terminal::formatDebugMessage(type, message, false).toStdString()
             << std::endl;
+  // code-verify on
 
   // Print to console
   Console::Handler::instance().displayDebugData(output + "\n");

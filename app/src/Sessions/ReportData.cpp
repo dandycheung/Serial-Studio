@@ -228,10 +228,6 @@ static void loadSessionTags(QSqlDatabase& db, int sessionId, Sessions::ReportDat
 
 /**
  * @brief Queries session metadata, columns, tags, and per-dataset stats.
- *
- * The stats query uses a single pass over @c readings with @c AVG(v*v) so we
- * can derive stddev without a second query. First/last values are fetched via
- * window-style subqueries because SQLite lacks @c FIRST_VALUE without CTEs.
  */
 Sessions::ReportData Sessions::ReportData::buildFromSession(QSqlDatabase& db, int sessionId)
 {
@@ -268,7 +264,7 @@ Sessions::ReportData Sessions::ReportData::buildFromSession(QSqlDatabase& db, in
 // loadChartSeries
 //--------------------------------------------------------------------------------------------------
 
-namespace {
+namespace detail {
 
 /**
  * @brief Column metadata for one plotted parameter.
@@ -281,16 +277,20 @@ struct ChartMeta {
   QString units;
 };
 
+}  // namespace detail
+
+using detail::ChartMeta;
+
 /**
  * @brief Reads a query result set into parallel DSP ring buffers.
  */
-std::size_t readAxisData(QSqlQuery& rows,
-                         qint64 originNs,
-                         qint64 reservation,
-                         DSP::AxisData& x,
-                         DSP::AxisData& y,
-                         double& globalMin,
-                         double& globalMax)
+static std::size_t readAxisData(QSqlQuery& rows,
+                                qint64 originNs,
+                                qint64 reservation,
+                                DSP::AxisData& x,
+                                DSP::AxisData& y,
+                                double& globalMin,
+                                double& globalMax)
 {
   const std::size_t capacity = static_cast<std::size_t>(std::max<qint64>(reservation, 1));
   x.resize(capacity);
@@ -323,7 +323,7 @@ std::size_t readAxisData(QSqlQuery& rows,
 /**
  * @brief Appends @p index to @p indices when it is not already present.
  */
-void appendUniqueIndex(std::vector<std::size_t>& indices, std::size_t index)
+static void appendUniqueIndex(std::vector<std::size_t>& indices, std::size_t index)
 {
   Q_ASSERT(indices.size() <= 8);
 
@@ -337,11 +337,11 @@ void appendUniqueIndex(std::vector<std::size_t>& indices, std::size_t index)
 /**
  * @brief Appends one bucket's representative sample indices to @p indices.
  */
-void appendBucketSamples(const DSP::AxisData& y,
-                         std::size_t begin,
-                         std::size_t end,
-                         int target,
-                         std::vector<std::size_t>& indices)
+static void appendBucketSamples(const DSP::AxisData& y,
+                                std::size_t begin,
+                                std::size_t end,
+                                int target,
+                                std::vector<std::size_t>& indices)
 {
   Q_ASSERT(begin < end);
   Q_ASSERT(target > 0);
@@ -376,9 +376,9 @@ void appendBucketSamples(const DSP::AxisData& y,
 /**
  * @brief Appends evenly-spaced samples until @p indices reaches @p budget.
  */
-void appendBudgetFillSamples(std::size_t count,
-                             std::size_t budget,
-                             std::vector<std::size_t>& indices)
+static void appendBudgetFillSamples(std::size_t count,
+                                    std::size_t budget,
+                                    std::vector<std::size_t>& indices)
 {
   Q_ASSERT(count >= budget);
   Q_ASSERT(indices.size() <= budget);
@@ -411,10 +411,10 @@ void appendBudgetFillSamples(std::size_t count,
 /**
  * @brief Copies the selected samples into @p series in chronological order.
  */
-void writeSelectedSamples(const DSP::AxisData& x,
-                          const DSP::AxisData& y,
-                          const std::vector<std::size_t>& indices,
-                          Sessions::DatasetSeries& series)
+static void writeSelectedSamples(const DSP::AxisData& x,
+                                 const DSP::AxisData& y,
+                                 const std::vector<std::size_t>& indices,
+                                 Sessions::DatasetSeries& series)
 {
   Q_ASSERT(!indices.empty());
   Q_ASSERT(series.timesSec.empty());
@@ -433,11 +433,11 @@ void writeSelectedSamples(const DSP::AxisData& x,
 /**
  * @brief Writes either the raw samples or a fixed-budget decimated series.
  */
-void writeReportSamples(const DSP::AxisData& x,
-                        const DSP::AxisData& y,
-                        std::size_t count,
-                        int maxSamples,
-                        Sessions::DatasetSeries& series)
+static void writeReportSamples(const DSP::AxisData& x,
+                               const DSP::AxisData& y,
+                               std::size_t count,
+                               int maxSamples,
+                               Sessions::DatasetSeries& series)
 {
   Q_ASSERT(count > 0);
   Q_ASSERT(maxSamples >= 2);
@@ -483,7 +483,7 @@ void writeReportSamples(const DSP::AxisData& x,
 /**
  * @brief Enumerates numeric parameters for @p sessionId in column order.
  */
-std::vector<ChartMeta> loadChartParameters(QSqlDatabase& db, int sessionId)
+static std::vector<ChartMeta> loadChartParameters(QSqlDatabase& db, int sessionId)
 {
   std::vector<ChartMeta> metas;
 
@@ -513,7 +513,7 @@ std::vector<ChartMeta> loadChartParameters(QSqlDatabase& db, int sessionId)
 /**
  * @brief Returns the session's earliest and latest @c timestamp_ns values.
  */
-std::pair<qint64, qint64> loadSessionTimeSpan(QSqlDatabase& db, int sessionId)
+static std::pair<qint64, qint64> loadSessionTimeSpan(QSqlDatabase& db, int sessionId)
 {
   QSqlQuery q(db);
   q.prepare("SELECT MIN(timestamp_ns), MAX(timestamp_ns) FROM readings WHERE session_id = ?");
@@ -530,7 +530,7 @@ std::pair<qint64, qint64> loadSessionTimeSpan(QSqlDatabase& db, int sessionId)
 /**
  * @brief Numeric-sample count per parameter, keyed by @c unique_id.
  */
-std::map<int, qint64> loadSampleCounts(QSqlDatabase& db, int sessionId)
+static std::map<int, qint64> loadSampleCounts(QSqlDatabase& db, int sessionId)
 {
   std::map<int, qint64> counts;
 
@@ -549,8 +549,6 @@ std::map<int, qint64> loadSampleCounts(QSqlDatabase& db, int sessionId)
 
   return counts;
 }
-
-}  // namespace
 
 /**
  * @brief Loads downsampled numeric time-series for every parameter.

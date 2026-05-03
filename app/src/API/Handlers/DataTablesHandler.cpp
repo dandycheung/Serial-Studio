@@ -33,12 +33,10 @@
 // Local helpers
 //--------------------------------------------------------------------------------------------------
 
-namespace {
-
 /**
  * @brief Extracts a required non-empty string param or returns an error response.
  */
-[[nodiscard]] bool requireString(const QJsonObject& params, const QString& key, QString& out)
+[[nodiscard]] static bool requireString(const QJsonObject& params, const QString& key, QString& out)
 {
   if (!params.contains(key))
     return false;
@@ -50,7 +48,7 @@ namespace {
 /**
  * @brief Converts a QJsonValue to a QVariant preserving numeric vs string type.
  */
-[[nodiscard]] QVariant jsonToVariant(const QJsonValue& v)
+[[nodiscard]] static QVariant jsonToVariant(const QJsonValue& v)
 {
   if (v.isDouble())
     return QVariant(v.toDouble());
@@ -63,8 +61,6 @@ namespace {
 
   return QVariant(0.0);
 }
-
-}  // anonymous namespace
 
 //--------------------------------------------------------------------------------------------------
 // Command registration

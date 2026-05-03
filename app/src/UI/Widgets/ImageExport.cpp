@@ -418,7 +418,7 @@ void Widgets::ImageExport::enqueueImage(const QByteArray& data,
                                         const QString& groupTitle,
                                         const QString& projectTitle)
 {
-  // Skip during playback -- we never re-encode replayed frames.
+  // Replayed frames are never re-encoded
   if (SerialStudio::isAnyPlayerOpen())
     return;
 

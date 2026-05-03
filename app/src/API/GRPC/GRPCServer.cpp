@@ -330,10 +330,7 @@ void API::GRPC::GRPCServer::setEnabled(const bool enabled)
 }
 
 /**
- * @brief Enqueues a parsed frame for background writing to gRPC clients.
- *
- * Called from the main thread hotpath. Lock-free enqueue ensures zero
- * blocking on the UI/data thread.
+ * @brief Enqueues a parsed frame for background writing to gRPC clients (lock-free, hotpath-safe).
  */
 void API::GRPC::GRPCServer::hotpathTxFrame(const DataModel::TimestampedFramePtr& frame)
 {

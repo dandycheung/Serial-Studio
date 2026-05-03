@@ -70,12 +70,11 @@ bool FileOpenEventFilter::eventFilter(QObject* obj, QEvent* event)
 //---------------------------------------------------------------------------------------------------
 
 #ifdef Q_OS_WIN
-namespace {
 
 /**
  * @brief Attaches the application to the parent console and redirects stdout/stderr.
  */
-void attachToConsole()
+static void attachToConsole()
 {
   if (AttachConsole(ATTACH_PARENT_PROCESS)) {
     FILE* fp = nullptr;
@@ -88,7 +87,7 @@ void attachToConsole()
 /**
  * @brief Pins the process to a stable Windows AppUserModelID.
  */
-void setWindowsAppUserModelId(const QString& shortcutPath)
+static void setWindowsAppUserModelId(const QString& shortcutPath)
 {
   QString aumid = QStringLiteral("AlexSpataru.SerialStudio");
   if (!shortcutPath.isEmpty())
@@ -100,7 +99,7 @@ void setWindowsAppUserModelId(const QString& shortcutPath)
 /**
  * @brief Opts the process out of EcoQoS throttling and prevents idle sleep.
  */
-void enableWindowsPerformanceMode()
+static void enableWindowsPerformanceMode()
 {
 #  if defined(PROCESS_POWER_THROTTLING_CURRENT_VERSION)
   PROCESS_POWER_THROTTLING_STATE state = {};
@@ -116,7 +115,7 @@ void enableWindowsPerformanceMode()
 /**
  * @brief Forces the Qt windows platform plugin to use FreeType font rendering.
  */
-char** adjustArgumentsForFreeType(int& argc, char** argv)
+static char** adjustArgumentsForFreeType(int& argc, char** argv)
 {
   const char* platformArgument = "-platform";
   const char* platformOption   = "windows:fontengine=freetype";
@@ -134,8 +133,6 @@ char** adjustArgumentsForFreeType(int& argc, char** argv)
   argc += 2;
   return newArgv;
 }
-
-}  // namespace
 #endif
 
 namespace AppPlatform {

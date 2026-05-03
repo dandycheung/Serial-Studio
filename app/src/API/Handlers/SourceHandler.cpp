@@ -307,9 +307,6 @@ API::CommandResponse API::Handlers::SourceHandler::sourceUpdate(const QString& i
 
 /**
  * @brief Applies multiple driver connection properties to a source in one call.
- *
- * Iterates over all key/value pairs in @p params["settings"] and delegates each
- * to sourceSetProperty, using the same UI-driver or editing-driver routing logic.
  */
 API::CommandResponse API::Handlers::SourceHandler::sourceConfigure(const QString& id,
                                                                    const QJsonObject& params)

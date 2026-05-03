@@ -26,7 +26,7 @@
 
 #  include "Misc/ShortcutGenerator.h"
 
-namespace {
+namespace detail {
 
 /**
  * @brief RAII helper that pairs CoInitializeEx with a matching CoUninitialize.
@@ -60,10 +60,14 @@ private:
   bool m_ok;
 };
 
+}  // namespace detail
+
+using detail::ComScope;
+
 /**
  * @brief Joins a CLI argument list into a single Windows command-line string.
  */
-QString joinForCmdLine(const QStringList& args, std::function<QString(const QString&)> quote)
+static QString joinForCmdLine(const QStringList& args, std::function<QString(const QString&)> quote)
 {
   QStringList quoted;
   quoted.reserve(args.size());
@@ -81,15 +85,13 @@ QString joinForCmdLine(const QStringList& args, std::function<QString(const QStr
  * same project file. Must stay byte-identical to shortcutIdentityHash() in
  * main.cpp -- both sides need to derive the same string from the same path.
  */
-QString shortcutAumidFor(const QString& shortcutPath)
+static QString shortcutAumidFor(const QString& shortcutPath)
 {
   const QByteArray digest =
     QCryptographicHash::hash(shortcutPath.toUtf8(), QCryptographicHash::Sha1);
   return QStringLiteral("AlexSpataru.SerialStudio.Shortcut.")
        + QString::fromLatin1(digest.toHex().left(16));
 }
-
-}  // namespace
 
 //--------------------------------------------------------------------------------------------------
 // Windows shortcut writer

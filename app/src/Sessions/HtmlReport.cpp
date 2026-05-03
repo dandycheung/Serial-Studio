@@ -754,7 +754,7 @@ QString Sessions::HtmlReport::buildPrintFooterLeft() const
  */
 QString Sessions::HtmlReport::buildPrintFooterRight() const
 {
-  // Escape characters that would break the CSS string literal we emit
+  // Escape characters that would break the CSS string literal
   auto cssEscape = [](QString s) {
     s.replace('\\', QStringLiteral("\\\\"));
     s.replace('"', QStringLiteral("\\\""));
@@ -826,13 +826,7 @@ void Sessions::HtmlReport::writeHtmlArtifact(const QString& htmlPath,
 //--------------------------------------------------------------------------------------------------
 
 /**
- * @brief Loads the HTML into an off-screen QWebEnginePage.
- *
- * The page's runtime flips @c window.__reportReady synchronously after
- * Chart.js finishes building every canvas. We read that flag via
- * @c runJavaScript -- the callback runs even on hidden (off-screen) pages,
- * unlike @c requestAnimationFrame which Chromium suspends for pages that
- * aren't attached to a visible view.
+ * @brief Loads the HTML into an off-screen QWebEnginePage and polls __reportReady.
  */
 void Sessions::HtmlReport::startPdfRender(const QString& html, const QString& pdfPath)
 {
@@ -866,15 +860,7 @@ void Sessions::HtmlReport::onLoadFinished(bool ok)
 }
 
 /**
- * @brief Reads @c window.__reportReady. If set, prints; else re-probes.
- *
- * The probe is non-blocking: runJavaScript posts to the renderer and fires
- * its callback when the result is available. The next probe is scheduled
- * only from inside the previous callback so at most one probe is in flight
- * at any time (no queue buildup, no races).
- *
- * Upper bound: 30 attempts x 100 ms = 3 s -- generous for the synchronous
- * ready flag, but we still cap it so a broken template can't hang.
+ * @brief Reads @c window.__reportReady; prints when set, otherwise reschedules (max 30 x 100ms).
  */
 void Sessions::HtmlReport::probeReadiness()
 {

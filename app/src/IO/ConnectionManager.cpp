@@ -1223,7 +1223,7 @@ void IO::ConnectionManager::rebuildDevices()
       this, [this, restored] { setBusType(restored); }, Qt::QueuedConnection);
   }
 
-  // Reconnect if we were connected before the rebuild
+  // Restore the prior connected state if any
   if (wasConnected)
     QMetaObject::invokeMethod(this, [this] { connectDevice(); }, Qt::QueuedConnection);
 }

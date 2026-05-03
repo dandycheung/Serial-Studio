@@ -370,7 +370,7 @@ Item {
         property real startPanY: 0.0
 
         PinchHandler {
-          target: null  // we drive root.zoom/panX/panY manually below
+          target: null  // root.zoom/panX/panY are driven manually below
 
           onActiveChanged: {
             if (active) {

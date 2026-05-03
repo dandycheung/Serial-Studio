@@ -54,12 +54,10 @@
 #  include "MQTT/Client.h"
 #endif
 
-namespace {
-
 /**
  * @brief Increments the per-type counter for every eligible dataset widget.
  */
-void tallyDatasetWidgetTypes(const DataModel::Dataset& ds, QMap<int, int>& counts)
+static void tallyDatasetWidgetTypes(const DataModel::Dataset& ds, QMap<int, int>& counts)
 {
   const auto keys = SerialStudio::getDashboardWidgets(ds);
   for (const auto& k : keys)
@@ -70,11 +68,11 @@ void tallyDatasetWidgetTypes(const DataModel::Dataset& ds, QMap<int, int>& count
 /**
  * @brief Appends a dataset widget ref unless the widget type is the LED aggregator.
  */
-bool appendDatasetRef(SerialStudio::DashboardWidget k,
-                      int groupId,
-                      QMap<SerialStudio::DashboardWidget, int>& datasetIdx,
-                      std::vector<DataModel::WidgetRef>& groupRefs,
-                      std::vector<DataModel::WidgetRef>& allRefs)
+static bool appendDatasetRef(SerialStudio::DashboardWidget k,
+                             int groupId,
+                             QMap<SerialStudio::DashboardWidget, int>& datasetIdx,
+                             std::vector<DataModel::WidgetRef>& groupRefs,
+                             std::vector<DataModel::WidgetRef>& allRefs)
 {
   if (k == SerialStudio::DashboardLED)
     return true;
@@ -96,10 +94,10 @@ bool appendDatasetRef(SerialStudio::DashboardWidget k,
 /**
  * @brief Collects per-dataset widget refs for a group, returning whether any LED is present.
  */
-bool collectGroupDatasetRefs(const DataModel::Group& group,
-                             QMap<SerialStudio::DashboardWidget, int>& datasetIdx,
-                             std::vector<DataModel::WidgetRef>& groupRefs,
-                             std::vector<DataModel::WidgetRef>& allRefs)
+static bool collectGroupDatasetRefs(const DataModel::Group& group,
+                                    QMap<SerialStudio::DashboardWidget, int>& datasetIdx,
+                                    std::vector<DataModel::WidgetRef>& groupRefs,
+                                    std::vector<DataModel::WidgetRef>& allRefs)
 {
   bool groupHasLed = false;
   for (const auto& ds : group.datasets) {
@@ -114,12 +112,12 @@ bool collectGroupDatasetRefs(const DataModel::Group& group,
 /**
  * @brief Pushes a tracked widget ref into the supplied output vectors.
  */
-void pushTrackedRef(SerialStudio::DashboardWidget key,
-                    int groupId,
-                    QMap<SerialStudio::DashboardWidget, int>& runningIdx,
-                    std::vector<DataModel::WidgetRef>& groupRefs,
-                    std::vector<DataModel::WidgetRef>& allRefs,
-                    std::vector<DataModel::WidgetRef>& overviewRefs)
+static void pushTrackedRef(SerialStudio::DashboardWidget key,
+                           int groupId,
+                           QMap<SerialStudio::DashboardWidget, int>& runningIdx,
+                           std::vector<DataModel::WidgetRef>& groupRefs,
+                           std::vector<DataModel::WidgetRef>& allRefs,
+                           std::vector<DataModel::WidgetRef>& overviewRefs)
 {
   DataModel::WidgetRef r;
   r.widgetType    = static_cast<int>(key);
@@ -131,6 +129,8 @@ void pushTrackedRef(SerialStudio::DashboardWidget key,
   allRefs.push_back(r);
   overviewRefs.push_back(r);
 }
+
+namespace detail {
 
 /**
  * @brief Layout config for fixed three-axis group widgets (Accel/Gyro/GPS/Plot3D).
@@ -145,10 +145,16 @@ struct ThreeAxisLayout {
   bool plt;
 };
 
+}  // namespace detail
+
+using detail::ThreeAxisLayout;
+
 /**
  * @brief Populates a group with three canonical axis datasets per supplied layout.
  */
-void populateThreeAxisDatasets(DataModel::Group& grp, int baseIndex, const ThreeAxisLayout& layout)
+static void populateThreeAxisDatasets(DataModel::Group& grp,
+                                      int baseIndex,
+                                      const ThreeAxisLayout& layout)
 {
   grp.widget = QString::fromUtf8(layout.widgetTag);
 
@@ -173,7 +179,7 @@ void populateThreeAxisDatasets(DataModel::Group& grp, int baseIndex, const Three
 /**
  * @brief Builds widget refs for one group during auto-workspace synthesis.
  */
-std::vector<DataModel::WidgetRef> buildAutoRefsForGroup(
+static std::vector<DataModel::WidgetRef> buildAutoRefsForGroup(
   const DataModel::Group& group,
   bool pro,
   QMap<SerialStudio::DashboardWidget, int>& groupIdx,
@@ -205,8 +211,6 @@ std::vector<DataModel::WidgetRef> buildAutoRefsForGroup(
 
   return groupRefs;
 }
-
-}  // namespace
 
 //--------------------------------------------------------------------------------------------------
 // Constructor/destructor & singleton instance access
@@ -1688,7 +1692,7 @@ void DataModel::ProjectModel::loadProjectRootScalars(const QJsonObject& json)
   else
     m_frameDecoder = static_cast<SerialStudio::DecoderMethod>(json.value(Keys::Decoder).toInt());
 
-  // Capture creator stamp so we round-trip it on save without overwriting
+  // Preserve the original creator stamp through save round-trips
   m_writerVersionAtCreation = json.value(Keys::WriterVersionAtCreation).toString();
 
   // Restore lock -- file with a hash opens read-only until user unlocks
@@ -3154,15 +3158,7 @@ void DataModel::ProjectModel::updateSourceFrameParserLanguage(int sourceId, int 
 }
 
 /**
- * @brief Stores frame parser code for the given source without emitting
- *        signals or reloading the JS engine.
- *
- * Used by the JsCodeEditor on every keystroke so that the project model
- * always has the latest code. The expensive FrameParser engine reload
- * only happens when the user explicitly clicks Evaluate/Apply.
- *
- * @param sourceId The source to update.
- * @param code     The new JavaScript source string.
+ * @brief Stores frame parser code without emitting signals or reloading the JS engine.
  */
 void DataModel::ProjectModel::storeFrameParserCode(int sourceId, const QString& code)
 {
@@ -3326,7 +3322,7 @@ void DataModel::ProjectModel::renameWorkspace(int workspaceId, const QString& ti
  */
 QString DataModel::ProjectModel::addTable(const QString& name)
 {
-  // Derive a unique table name so we never collide with an existing one
+  // Derive a unique table name (collision-free)
   QString base = name.simplified();
   if (base.isEmpty())
     base = tr("Shared Table");
@@ -3973,13 +3969,7 @@ bool DataModel::ProjectModel::customizeWorkspaces() const noexcept
 }
 
 /**
- * @brief Flips the customize switch.
- *
- * Off -> On: m_workspaces is already the auto layout; simply stop
- *   regenerating it so the user's subsequent edits stick.
- *
- * On -> Off: discard the hand-edited list and re-seed from the current
- *   project structure.
+ * @brief Flips the customize switch (Off->On freezes auto layout, On->Off re-seeds it).
  */
 void DataModel::ProjectModel::setCustomizeWorkspaces(const bool enabled)
 {
@@ -4110,12 +4100,10 @@ void DataModel::ProjectModel::regenerateAutoWorkspaces()
 /**
  * @brief Merges newly-eligible auto refs into the user-customised workspace list.
  *
- * In customize mode the user owns m_workspaces, so we cannot wholesale
- * regenerate it. Instead we diff the current auto layout against the last
- * snapshot -- refs and per-group workspaces that appear for the first time are
- * merged in (preserving user-removed refs from prior generations), while
- * existing per-group workspaces inherit the latest group title. Returns true
- * when m_workspaces was modified.
+ * In customize mode m_workspaces is user-owned and cannot be regenerated wholesale.
+ * The diff against the last snapshot adds first-appearance refs and per-group
+ * workspaces (preserving user-removed entries) and refreshes existing per-group
+ * workspace titles. Returns true when m_workspaces was modified.
  */
 bool DataModel::ProjectModel::mergeAutoWorkspaceUpdates()
 {

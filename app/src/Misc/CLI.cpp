@@ -374,12 +374,10 @@ void CLI::setupTcpConnection(const QString& tcpAddress)
   IO::ConnectionManager::instance().connectDevice();
 }
 
-namespace {
-
 /**
  * @brief Applies the optional --udp-remote spec to the active network driver.
  */
-void applyUdpRemote(const QString& udpRemote)
+static void applyUdpRemote(const QString& udpRemote)
 {
   const QStringList parts = udpRemote.split(':');
   if (parts.size() != 2) {
@@ -397,8 +395,6 @@ void applyUdpRemote(const QString& udpRemote)
   IO::ConnectionManager::instance().network()->setRemoteAddress(parts[0]);
   IO::ConnectionManager::instance().network()->setUdpRemotePort(remotePort);
 }
-
-}  // namespace
 
 /**
  * @brief Configures and connects a UDP socket from CLI options.
@@ -467,12 +463,10 @@ bool CLI::verifyShortcutProject() const
   return false;
 }
 
-namespace {
-
 /**
  * @brief Splits a comma-separated taskbar pin list into a trimmed QStringList.
  */
-QStringList splitTaskbarButtonIds(const QString& raw)
+static QStringList splitTaskbarButtonIds(const QString& raw)
 {
   QStringList ids;
   const auto parts = raw.split(QLatin1Char(','), Qt::SkipEmptyParts);
@@ -482,8 +476,6 @@ QStringList splitTaskbarButtonIds(const QString& raw)
 
   return ids;
 }
-
-}  // namespace
 
 /**
  * @brief Applies taskbar visibility/pinning settings for operator runtime mode.
@@ -637,12 +629,10 @@ int CLI::deactivateLicense(QApplication& app)
 // Commercial: Modbus helpers
 //---------------------------------------------------------------------------------------------------
 
-namespace {
-
 /**
  * @brief Parses a Modbus register spec string and registers it with the Modbus driver.
  */
-void applyModbusRegister(const QString& spec)
+static void applyModbusRegister(const QString& spec)
 {
   QStringList parts = spec.split(':');
   if (parts.size() != 3) {
@@ -680,7 +670,7 @@ void applyModbusRegister(const QString& spec)
 /**
  * @brief Applies the Modbus parity option to the active Modbus driver.
  */
-void applyModbusParity(const QString& parity)
+static void applyModbusParity(const QString& parity)
 {
   static const QHash<QString, quint8> kParity = {
     { QStringLiteral("none"), 0},
@@ -703,7 +693,7 @@ void applyModbusParity(const QString& parity)
 /**
  * @brief Applies the Modbus data-bits option to the active Modbus driver.
  */
-void applyModbusDataBits(const QString& dataBits)
+static void applyModbusDataBits(const QString& dataBits)
 {
   static const QHash<QString, quint8> kDataBits = {
     {QStringLiteral("5"), 0},
@@ -725,7 +715,7 @@ void applyModbusDataBits(const QString& dataBits)
 /**
  * @brief Applies the Modbus stop-bits option to the active Modbus driver.
  */
-void applyModbusStopBits(const QString& stopBits)
+static void applyModbusStopBits(const QString& stopBits)
 {
   static const QHash<QString, quint8> kStopBits = {
     {  QStringLiteral("1"), 0},
@@ -746,7 +736,7 @@ void applyModbusStopBits(const QString& stopBits)
 /**
  * @brief Applies the Modbus slave option to the active Modbus driver.
  */
-void applyModbusSlave(const QCommandLineParser& parser, const QCommandLineOption& opt)
+static void applyModbusSlave(const QCommandLineParser& parser, const QCommandLineOption& opt)
 {
   if (!parser.isSet(opt))
     return;
@@ -764,7 +754,7 @@ void applyModbusSlave(const QCommandLineParser& parser, const QCommandLineOption
 /**
  * @brief Applies the Modbus poll-interval option to the active Modbus driver.
  */
-void applyModbusPoll(const QCommandLineParser& parser, const QCommandLineOption& opt)
+static void applyModbusPoll(const QCommandLineParser& parser, const QCommandLineOption& opt)
 {
   if (!parser.isSet(opt))
     return;
@@ -782,7 +772,7 @@ void applyModbusPoll(const QCommandLineParser& parser, const QCommandLineOption&
 /**
  * @brief Applies the Modbus serial baud-rate option to the active Modbus driver.
  */
-void applyModbusBaud(const QCommandLineParser& parser, const QCommandLineOption& opt)
+static void applyModbusBaud(const QCommandLineParser& parser, const QCommandLineOption& opt)
 {
   if (!parser.isSet(opt))
     return;
@@ -800,7 +790,7 @@ void applyModbusBaud(const QCommandLineParser& parser, const QCommandLineOption&
 /**
  * @brief Applies all --modbus-register specs and warns if none are present.
  */
-void applyModbusRegisters(const QCommandLineParser& parser, const QCommandLineOption& opt)
+static void applyModbusRegisters(const QCommandLineParser& parser, const QCommandLineOption& opt)
 {
   IO::ConnectionManager::instance().modbus()->clearRegisterGroups();
   if (!parser.isSet(opt)) {
@@ -816,7 +806,7 @@ void applyModbusRegisters(const QCommandLineParser& parser, const QCommandLineOp
 /**
  * @brief Parses a Modbus TCP host[:port] string.
  */
-bool parseModbusTcpAddress(const QString& tcpAddress, QString& host, quint16& port)
+static bool parseModbusTcpAddress(const QString& tcpAddress, QString& host, quint16& port)
 {
   const QStringList parts = tcpAddress.split(':');
   if (parts.size() != 1 && parts.size() != 2)
@@ -837,8 +827,6 @@ bool parseModbusTcpAddress(const QString& tcpAddress, QString& host, quint16& po
   port = p;
   return true;
 }
-
-}  // namespace
 
 /**
  * @brief Configures and connects a Modbus RTU bus from CLI options.

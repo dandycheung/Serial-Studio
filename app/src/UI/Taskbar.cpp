@@ -871,31 +871,6 @@ void UI::Taskbar::setWindowState(const int id, const UI::TaskbarModel::WindowSta
 //--------------------------------------------------------------------------------------------------
 
 /**
- * @brief Rebuilds the internal full model to reflect the current dashboard
- *        layout.
- *
- * This function is triggered when the widget structure changes (e.g., due to a
- * new data frame). It regenerates the `fullModel`, which is a hierarchical
- * representation of all widgets grouped by their data groups, maintaining the
- * user's declared order and layout.
- *
- * What it does:
- * - Clears previous state and active window
- * - Iterates over all groups from the latest DataModel frame
- * - For each group, finds all associated widgets (both group-level and
- *   dataset-level)
- * - Builds a hierarchical QStandardItem tree for the group and its widgets
- * - Stores primary window IDs and widget types for later lookup
- * - Emits change notifications to update the UI bindings
- *
- * Grouping logic:
- * - Each top-level group is registered only once
- * - Any duplicate group references (composite widgets) are added as subgroups
- *
- * This is the authoritative source for all UI view models like tabs and
- * taskbars.
- */
-/**
  * @brief Records the bidirectional mapping between a widget ID and a window ID.
  */
 void UI::Taskbar::mapWidgetToWindow(UI::WidgetID wid, int windowId)
@@ -1335,11 +1310,7 @@ void UI::Taskbar::onRegistryCleared()
 }
 
 /**
- * @brief Handles batch update completion from the registry.
- *
- * This is called after all widgets have been created/destroyed during
- * a batch operation (like reconfigureDashboard). This is where we can
- * trigger expensive operations like layout recalculation.
+ * @brief Handles batch-update completion from the registry (post-reconfigure hook).
  */
 void UI::Taskbar::onBatchUpdateCompleted() {}
 
@@ -1640,13 +1611,7 @@ QVariantList UI::Taskbar::searchResults() const
 }
 
 /**
- * @brief Returns a flat list of every widget in the full model.
- *
- * Unlike searchResults(), this function applies no filter and no result limit.
- * Each entry is a QVariantMap with: windowId, widgetName, widgetIcon,
- * widgetType, groupName, groupId, isWorkspace.
- *
- * Used by the workspace dialog, which needs to display every available widget.
+ * @brief Returns an unfiltered, unlimited flat list of every widget in the full model.
  */
 QVariantList UI::Taskbar::allWidgets() const
 {
@@ -1837,7 +1802,7 @@ void UI::Taskbar::deleteWorkspace(int workspaceId)
   else
     return;
 
-  // Switch away if we deleted/hid the active workspace
+  // Switch away when the active workspace was deleted or hidden
   if (m_activeGroupId == workspaceId) {
     auto model = workspaceModel();
     if (!model.isEmpty())
@@ -1964,10 +1929,7 @@ void UI::Taskbar::removeWorkspaceTaskbarRow(int windowId)
 }
 
 /**
- * @brief Returns window IDs of all widgets in the given user workspace.
- *
- * Used by the workspace editor dialog to pre-check widgets that are already
- * in the workspace. Returns an empty list for non-user workspaces.
+ * @brief Returns window IDs of all widgets in the given user workspace, empty for non-user IDs.
  */
 QVariantList UI::Taskbar::workspaceWidgetIds(int workspaceId) const
 {

@@ -31,7 +31,8 @@
 #include "UI/Taskbar.h"
 #include "UI/UISessionRegistry.h"
 
-namespace {
+namespace detail {
+
 /**
  * @brief Tiling environment shared by every per-count auto-layout helper.
  */
@@ -43,10 +44,15 @@ struct TileEnv {
   bool isLandscape;
 };
 
+}  // namespace detail
+
+using detail::TileEnv;
+
 /**
  * @brief Returns the manual-mode snap rectangle for the dragged window's edges.
  */
-std::optional<QRect> computeSnapRect(int left, int top, int right, int bottom, int cw, int ch)
+static std::optional<QRect> computeSnapRect(
+  int left, int top, int right, int bottom, int cw, int ch)
 {
   if (left <= 0 && top <= 0)
     return QRect(0, 0, cw / 2, ch / 2);
@@ -75,7 +81,7 @@ std::optional<QRect> computeSnapRect(int left, int top, int right, int bottom, i
 /**
  * @brief Sets a window's geometry to the given rectangle.
  */
-void placeWindow(QQuickItem* win, int x, int y, int w, int h)
+static void placeWindow(QQuickItem* win, int x, int y, int w, int h)
 {
   win->setX(x);
   win->setY(y);
@@ -86,7 +92,7 @@ void placeWindow(QQuickItem* win, int x, int y, int w, int h)
 /**
  * @brief One window fills the available canvas area.
  */
-void tileOne(const QList<QQuickItem*>& wins, const TileEnv& env)
+static void tileOne(const QList<QQuickItem*>& wins, const TileEnv& env)
 {
   placeWindow(wins[0], env.margin, env.margin, env.availW, env.availH);
 }
@@ -94,7 +100,7 @@ void tileOne(const QList<QQuickItem*>& wins, const TileEnv& env)
 /**
  * @brief Two windows split side-by-side or stacked depending on orientation.
  */
-void tileTwo(const QList<QQuickItem*>& wins, const TileEnv& env)
+static void tileTwo(const QList<QQuickItem*>& wins, const TileEnv& env)
 {
   if (env.isLandscape) {
     const int w = (env.availW - env.spacing) / 2;
@@ -111,7 +117,7 @@ void tileTwo(const QList<QQuickItem*>& wins, const TileEnv& env)
 /**
  * @brief Three windows in a master + 2-stack arrangement.
  */
-void tileThree(const QList<QQuickItem*>& wins, const TileEnv& env)
+static void tileThree(const QList<QQuickItem*>& wins, const TileEnv& env)
 {
   if (env.isLandscape) {
     const int masterW = env.availW / 2;
@@ -139,7 +145,7 @@ void tileThree(const QList<QQuickItem*>& wins, const TileEnv& env)
 /**
  * @brief Four windows in a 2x2 grid.
  */
-void tileFour(const QList<QQuickItem*>& wins, const TileEnv& env)
+static void tileFour(const QList<QQuickItem*>& wins, const TileEnv& env)
 {
   const int w = (env.availW - env.spacing) / 2;
   const int h = (env.availH - env.spacing) / 2;
@@ -152,7 +158,7 @@ void tileFour(const QList<QQuickItem*>& wins, const TileEnv& env)
 /**
  * @brief Five windows in an asymmetric 2+3 arrangement.
  */
-void tileFive(const QList<QQuickItem*>& wins, const TileEnv& env)
+static void tileFive(const QList<QQuickItem*>& wins, const TileEnv& env)
 {
   if (env.isLandscape) {
     const int topW = (env.availW - env.spacing) / 2;
@@ -181,7 +187,7 @@ void tileFive(const QList<QQuickItem*>& wins, const TileEnv& env)
 /**
  * @brief Six windows in a 3x2 or 2x3 grid based on canvas orientation.
  */
-void tileSix(const QList<QQuickItem*>& wins, const TileEnv& env)
+static void tileSix(const QList<QQuickItem*>& wins, const TileEnv& env)
 {
   const int cols = env.isLandscape ? 3 : 2;
   const int rows = env.isLandscape ? 2 : 3;
@@ -199,7 +205,7 @@ void tileSix(const QList<QQuickItem*>& wins, const TileEnv& env)
 /**
  * @brief Seven or more windows distributed in an aspect-aware optimal grid.
  */
-void tileGrid(const QList<QQuickItem*>& wins, const TileEnv& env)
+static void tileGrid(const QList<QQuickItem*>& wins, const TileEnv& env)
 {
   // Compute grid dimensions based on aspect ratio
   const int n = wins.size();
@@ -286,7 +292,7 @@ void tileGrid(const QList<QQuickItem*>& wins, const TileEnv& env)
 /**
  * @brief Dispatches to the appropriate tiling helper based on window count.
  */
-void dispatchTile(const QList<QQuickItem*>& wins, const TileEnv& env)
+static void dispatchTile(const QList<QQuickItem*>& wins, const TileEnv& env)
 {
   switch (wins.size()) {
     case 1:
@@ -312,7 +318,6 @@ void dispatchTile(const QList<QQuickItem*>& wins, const TileEnv& env)
       return;
   }
 }
-}  // namespace
 
 //--------------------------------------------------------------------------------------------------
 // Constructor & initialization

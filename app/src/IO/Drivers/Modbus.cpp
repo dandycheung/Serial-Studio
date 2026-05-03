@@ -41,12 +41,10 @@
 #include "Misc/Utilities.h"
 #include "SerialStudio.h"
 
-namespace {
-
 /**
  * @brief Maps the UI parity index to the corresponding QSerialPort::Parity enum.
  */
-[[nodiscard]] QSerialPort::Parity parityFromIndex(quint8 index) noexcept
+[[nodiscard]] static QSerialPort::Parity parityFromIndex(quint8 index) noexcept
 {
   if (index == 1)
     return QSerialPort::EvenParity;
@@ -66,7 +64,7 @@ namespace {
 /**
  * @brief Maps the UI data-bits index to the corresponding QSerialPort::DataBits enum.
  */
-[[nodiscard]] QSerialPort::DataBits dataBitsFromIndex(quint8 index) noexcept
+[[nodiscard]] static QSerialPort::DataBits dataBitsFromIndex(quint8 index) noexcept
 {
   if (index == 0)
     return QSerialPort::Data5;
@@ -83,7 +81,7 @@ namespace {
 /**
  * @brief Maps the UI stop-bits index to the corresponding QSerialPort::StopBits enum.
  */
-[[nodiscard]] QSerialPort::StopBits stopBitsFromIndex(quint8 index) noexcept
+[[nodiscard]] static QSerialPort::StopBits stopBitsFromIndex(quint8 index) noexcept
 {
   if (index == 1)
     return QSerialPort::OneAndHalfStop;
@@ -97,7 +95,7 @@ namespace {
 /**
  * @brief Returns the user-visible serial ports filtered by the same rules used by the UI list.
  */
-[[nodiscard]] QVector<QSerialPortInfo> filteredSerialPorts()
+[[nodiscard]] static QVector<QSerialPortInfo> filteredSerialPorts()
 {
   QVector<QSerialPortInfo> filtered;
   const auto ports = QSerialPortInfo::availablePorts();
@@ -115,8 +113,6 @@ namespace {
 
   return filtered;
 }
-
-}  // namespace
 
 //--------------------------------------------------------------------------------------------------
 // Constructor/destructor & singleton access functions
@@ -1442,17 +1438,15 @@ QJsonObject IO::Drivers::Modbus::deviceIdentifier() const
   return id;
 }
 
-namespace {
-
 /**
  * @brief Scores a serial-port candidate against saved identifier fields.
  */
-[[nodiscard]] int scorePortMatch(const QSerialPortInfo& info,
-                                 const QString& savedVid,
-                                 const QString& savedPid,
-                                 const QString& savedSer,
-                                 const QString& savedName,
-                                 const QString& savedDesc)
+[[nodiscard]] static int scorePortMatch(const QSerialPortInfo& info,
+                                        const QString& savedVid,
+                                        const QString& savedPid,
+                                        const QString& savedSer,
+                                        const QString& savedName,
+                                        const QString& savedDesc)
 {
   int score = 0;
 
@@ -1475,8 +1469,6 @@ namespace {
 
   return score;
 }
-
-}  // namespace
 
 /**
  * @brief Tries to find and select a serial port matching a previously saved identifier.

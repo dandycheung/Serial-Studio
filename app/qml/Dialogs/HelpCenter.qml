@@ -109,7 +109,7 @@ SmartDialog {
   }
 
   //
-  // Track whether we are still fetching the manifest
+  // True while the manifest fetch is in flight
   //
   property bool fetchingData: Cpp_HelpCenter.count === 0 && Cpp_HelpCenter.searchFilter === ""
 

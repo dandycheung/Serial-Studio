@@ -166,24 +166,9 @@ public:
   }
 
 protected:
-  /**
-   * @brief Processes a batch of dequeued items.
-   *
-   * @param items Vector of items drained from the queue
-   */
   virtual void processItems(const std::vector<T>& items) = 0;
-
-  /**
-   * @brief Closes all resources managed by this worker.
-   */
-  virtual void closeResources() = 0;
-
-  /**
-   * @brief Checks if resources are currently open.
-   *
-   * @return true if resources are open, false otherwise
-   */
-  [[nodiscard]] virtual bool isResourceOpen() const = 0;
+  virtual void closeResources()                          = 0;
+  [[nodiscard]] virtual bool isResourceOpen() const      = 0;
 
   /**
    * @brief Returns whether processing is currently enabled.

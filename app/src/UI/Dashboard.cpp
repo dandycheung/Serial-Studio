@@ -49,10 +49,8 @@ constexpr int kDefaultPlotPoints = 100;
 // File-local helpers
 //--------------------------------------------------------------------------------------------------
 
-namespace {
-
 /** @brief Decrements a RepeatNTimes counter and stops the timer when it hits zero. */
-void tickRepeatTimer(int index, QMap<int, QTimer*>& timers, QMap<int, int>& counters)
+static void tickRepeatTimer(int index, QMap<int, QTimer*>& timers, QMap<int, int>& counters)
 {
   const auto it = counters.find(index);
   if (it == counters.end())
@@ -70,7 +68,7 @@ void tickRepeatTimer(int index, QMap<int, QTimer*>& timers, QMap<int, int>& coun
 
 #ifdef BUILD_COMMERCIAL
 /** @brief Routes a 3D-plot dataset value into the matching X/Y/Z component of point. */
-inline void readPlot3DAxis(const DataModel::Dataset& dataset, QVector3D& point)
+static inline void readPlot3DAxis(const DataModel::Dataset& dataset, QVector3D& point)
 {
   const QString& id = dataset.widget;
   if (id == "x" || id == "X")
@@ -83,7 +81,10 @@ inline void readPlot3DAxis(const DataModel::Dataset& dataset, QVector3D& point)
 #endif
 
 /** @brief Routes a numeric GPS dataset value into the lat/lon/alt accumulator. */
-inline void readGpsField(const DataModel::Dataset& dataset, double& lat, double& lon, double& alt)
+static inline void readGpsField(const DataModel::Dataset& dataset,
+                                double& lat,
+                                double& lon,
+                                double& alt)
 {
   if (!dataset.isNumeric)
     return;
@@ -98,10 +99,10 @@ inline void readGpsField(const DataModel::Dataset& dataset, double& lat, double&
 }
 
 /** @brief Applies a non-RepeatNTimes timer mode to an action's QTimer. */
-void applyTimerMode(QTimer* timer,
-                    DataModel::TimerMode mode,
-                    bool guiTrigger,
-                    const QString& actionTitle)
+static void applyTimerMode(QTimer* timer,
+                           DataModel::TimerMode mode,
+                           bool guiTrigger,
+                           const QString& actionTitle)
 {
   if (!timer) {
     qWarning() << "Invalid timer pointer for action" << actionTitle;
@@ -118,8 +119,6 @@ void applyTimerMode(QTimer* timer,
       timer->start();
   }
 }
-
-}  // namespace
 
 //--------------------------------------------------------------------------------------------------
 // Constructor & singleton access

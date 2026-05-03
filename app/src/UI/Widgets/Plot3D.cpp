@@ -122,21 +122,7 @@ Widgets::Plot3D::Plot3D(const int index, QQuickItem* parent)
 //--------------------------------------------------------------------------------------------------
 
 /**
- * @brief Renders the complete 3D plot scene, including optional anaglyph.
- *
- * This method composites all plot layers--background, grid, plot data,
- * and camera indicator--into the provided QPainter target. It handles
- * dirty flags to re-render components as needed.
- *
- * If anaglyph mode is enabled, it:
- * - Composes the full scene into a single image.
- * - Generates left and right eye views (right view shifted horizontally).
- * - Manually blends the two views into a red-cyan anaglyph using per-pixel
- *   channel mixing (red from left, green+blue from right).
- *
- * If anaglyph is disabled, it simply draws the pre-rendered layers as-is.
- *
- * @param painter The QPainter to render the scene onto.
+ * @brief Renders the complete 3D plot scene, blending a red-cyan anaglyph when enabled.
  */
 void Widgets::Plot3D::paint(QPainter* painter)
 {
@@ -1098,7 +1084,7 @@ void Widgets::Plot3D::drawLine3D(QPainter& painter,
   const QPointF center(halfW, halfH);
   const float maxDist = 0.5f * std::hypot(w, h);
 
-  // Define screen region beyond which we skip segments
+  // Off-screen culling threshold relative to viewport
   const float screenRatio = 0.4f;
   const float xLimit      = w * screenRatio;
   const float yLimit      = h * screenRatio;
@@ -1273,7 +1259,7 @@ QImage Widgets::Plot3D::renderCameraIndicator(const QMatrix4x4& matrix)
     transformedAxes.append({ax, t});
   }
 
-  // Sort axes so we avoid drawing items that should go back in the front
+  // Back-to-front Z order so painter's algorithm handles depth correctly
   std::sort(transformedAxes.begin(),
             transformedAxes.end(),
             [](const TransformedAxis& a, const TransformedAxis& b) {

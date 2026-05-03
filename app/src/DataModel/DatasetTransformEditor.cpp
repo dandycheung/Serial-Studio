@@ -427,7 +427,7 @@ void DataModel::DatasetTransformEditor::onLanguageChanged(int index)
   // Switch highlighter
   applyLanguage(newLang);
 
-  // If we recognised a template, load its equivalent in the new language
+  // Swap to the matching template in the new language
   if (tmplIdx >= 0) {
     const auto& tmpl   = m_templates[tmplIdx];
     const QString code = (newLang == SerialStudio::Lua) ? tmpl.luaCode : tmpl.jsCode;

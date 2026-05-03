@@ -271,7 +271,7 @@ Widgets.SmartWindow {
   }
 
   //
-  // Hide console & device manager when we receive first valid frame
+  // Hide console & device manager on first valid frame
   //
   Connections {
     target: Cpp_UI_Dashboard

@@ -41,11 +41,7 @@ static NSAlertStyle alertStyleFor(QMessageBox::Icon icon)
 }
 
 /**
- * @brief Translates a Qt standard-button set to up to three NSAlert buttons.
- *
- * NSAlert only accepts three buttons (primary, secondary, tertiary); Qt's
- * @c QMessageBox can carry many more. We map the common subset the app
- * actually uses and fall back to @c "OK" when no button flags are given.
+ * @brief Translates a Qt standard-button set to up to three NSAlert buttons (defaults to OK).
  */
 static NSArray<NSString *> *buttonTitlesFor(QMessageBox::StandardButtons bt,
                                             const ButtonTextMap& overrides)
@@ -99,11 +95,7 @@ static NSArray<NSString *> *buttonTitlesFor(QMessageBox::StandardButtons bt,
 }
 
 /**
- * @brief Matches the NSAlert return code back to a Qt StandardButton.
- *
- * NSAlert returns 1000, 1001, 1002 for first/second/third button. We map
- * those indices into the same @c kOrder list used to build the title list
- * so the caller sees the Qt value corresponding to the clicked button.
+ * @brief Matches the NSAlert return code (1000/1001/1002) back to a Qt StandardButton.
  */
 static QMessageBox::StandardButton mapNSAlertReturn(
   NSModalResponse response, QMessageBox::StandardButtons bt)
@@ -131,10 +123,7 @@ static QMessageBox::StandardButton mapNSAlertReturn(
 }
 
 /**
- * @brief Native NSAlert replacement for @c showMessageBox on macOS.
- *
- * Called from @c Misc::Utilities::showMessageBox via a weak symbol so the
- * same Utilities.cpp compiles unchanged on other platforms.
+ * @brief Native NSAlert replacement for @c showMessageBox on macOS, exposed as a weak symbol.
  */
 int Misc_Utilities_showNativeMessageBox(
   const QString& text, const QString& informativeText, QMessageBox::Icon icon,

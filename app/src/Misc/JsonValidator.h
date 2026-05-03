@@ -43,101 +43,40 @@ namespace Misc {
  */
 class JsonValidator {
 public:
-  /**
-   * @brief Configurable bounds for JSON validation.
-   *
-   * Defines maximum allowed values for JSON structure dimensions.
-   */
+  /** @brief Configurable bounds (file size, depth, array size) for JSON validation. */
   struct Limits {
     qsizetype maxFileSize;
     int maxDepth;
     int maxArraySize;
 
-    /**
-     * @brief Constructs Limits with secure default values.
-     */
     Limits() : maxFileSize(10 * 1024 * 1024), maxDepth(128), maxArraySize(10000) {}
   };
 
-  /**
-   * @brief Result of JSON parsing and validation.
-   *
-   * Contains validation status, error message (if failed), and
-   * the parsed document (if successful).
-   */
+  /** @brief Result of JSON parsing and validation: valid flag, error string, and document. */
   struct ValidationResult {
     bool valid = false;
     QString errorMessage;
     QJsonDocument document;
   };
 
-  /**
-   * @brief Parses and validates JSON with default security limits.
-   *
-   * Convenience overload using default Limits. Suitable for most use cases.
-   *
-   * @param data Raw JSON byte array to validate
-   * @return ValidationResult with status and document or error message
-   */
   static ValidationResult parseAndValidate(const QByteArray& data);
-
-  /**
-   * @brief Parses and validates JSON with custom security limits.
-   *
-   * @param data Raw JSON byte array to validate
-   * @param limits Custom validation thresholds
-   * @return ValidationResult with status and document or error message
-   */
   static ValidationResult parseAndValidate(const QByteArray& data, const Limits& limits);
-
-  /**
-   * @brief Recursively validates JSON structure depth and array sizes.
-   *
-   * @param value JSON value to validate
-   * @param limits Validation thresholds
-   * @param currentDepth Current recursion depth
-   * @return True if structure is valid, false otherwise
-   */
   static bool validateStructure(const QJsonValue& value,
                                 const Limits& limits,
                                 int currentDepth = 0);
 
 private:
-  /**
-   * @brief Validates a JSON object and its children recursively.
-   */
   static bool validateObject(const QJsonObject& obj, const Limits& limits, int depth);
-
-  /**
-   * @brief Validates a JSON array and its elements recursively.
-   */
   static bool validateArray(const QJsonArray& arr, const Limits& limits, int depth);
 };
 
-/**
- * @brief Default validation using standard security limits.
- *
- * @param data JSON byte array to validate
- * @return ValidationResult with parsed document or error details
- */
+/** @brief Default validation using standard security limits. */
 inline JsonValidator::ValidationResult JsonValidator::parseAndValidate(const QByteArray& data)
 {
   return parseAndValidate(data, Limits());
 }
 
-/**
- * @brief Full JSON parsing and validation implementation.
- *
- * **Validation Sequence:**
- * 1. Check file size against limits.maxFileSize
- * 2. Check for empty data
- * 3. Parse JSON syntax with QJsonDocument
- * 4. Recursively validate structure (depth and array sizes)
- *
- * @param data JSON byte array to validate
- * @param limits Validation thresholds to enforce
- * @return ValidationResult with status, document, or error message
- */
+/** @brief Full JSON parsing and validation against the supplied limits. */
 inline JsonValidator::ValidationResult JsonValidator::parseAndValidate(const QByteArray& data,
                                                                        const Limits& limits)
 {
@@ -183,17 +122,7 @@ inline JsonValidator::ValidationResult JsonValidator::parseAndValidate(const QBy
   return result;
 }
 
-/**
- * @brief Recursively validates JSON value depth and structure.
- *
- * Dispatches to validateObject() or validateArray() based on value type.
- * Primitive types are always valid.
- *
- * @param value JSON value to validate
- * @param limits Validation thresholds
- * @param currentDepth Current nesting level
- * @return True if value and all children are within limits
- */
+/** @brief Recursively validates JSON value depth and structure. */
 inline bool JsonValidator::validateStructure(const QJsonValue& value,
                                              const Limits& limits,
                                              int currentDepth)
@@ -212,14 +141,7 @@ inline bool JsonValidator::validateStructure(const QJsonValue& value,
   return true;
 }
 
-/**
- * @brief Validates a JSON object and all nested children.
- *
- * @param obj JSON object to validate
- * @param limits Validation thresholds
- * @param depth Current nesting depth
- * @return True if object and all children are within limits
- */
+/** @brief Validates a JSON object and all nested children. */
 inline bool JsonValidator::validateObject(const QJsonObject& obj, const Limits& limits, int depth)
 {
   // Check recursion depth limit
@@ -234,14 +156,7 @@ inline bool JsonValidator::validateObject(const QJsonObject& obj, const Limits& 
   return true;
 }
 
-/**
- * @brief Validates a JSON array size and all nested elements.
- *
- * @param arr JSON array to validate
- * @param limits Validation thresholds
- * @param depth Current nesting depth
- * @return True if array and all elements are within limits
- */
+/** @brief Validates a JSON array size and all nested elements. */
 inline bool JsonValidator::validateArray(const QJsonArray& arr, const Limits& limits, int depth)
 {
   // Check recursion depth limit

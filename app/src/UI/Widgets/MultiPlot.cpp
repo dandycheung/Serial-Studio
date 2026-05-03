@@ -25,12 +25,11 @@
 #include "Misc/ThemeManager.h"
 #include "UI/Dashboard.h"
 
-namespace {
 /**
  * @brief Returns the shared simplified unit of every dataset in @p group, or
  *        an empty string when datasets disagree or the first unit is empty.
  */
-QString sharedDatasetUnit(const DataModel::Group& group)
+static QString sharedDatasetUnit(const DataModel::Group& group)
 {
   if (group.datasets.empty())
     return {};
@@ -45,7 +44,6 @@ QString sharedDatasetUnit(const DataModel::Group& group)
 
   return firstUnit;
 }
-}  // namespace
 
 //--------------------------------------------------------------------------------------------------
 // Constructor & initialization

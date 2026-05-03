@@ -50,31 +50,11 @@ public:
 
   virtual ~Protocol() = default;
 
-  /**
-   * @brief Human-readable name for display in UI.
-   */
-  [[nodiscard]] virtual QString protocolName() const = 0;
-
-  /**
-   * @brief Start sending the file at @p filePath.
-   */
+  [[nodiscard]] virtual QString protocolName() const  = 0;
   virtual void startTransfer(const QString& filePath) = 0;
-
-  /**
-   * @brief Cancel an in-progress transfer.
-   */
-  virtual void cancelTransfer() = 0;
-
-  /**
-   * @brief Feed bytes received from the remote device into the protocol
-   *        state machine.
-   */
-  virtual void processInput(const QByteArray& data) = 0;
-
-  /**
-   * @brief Whether the protocol is currently running a transfer.
-   */
-  [[nodiscard]] virtual bool isActive() const = 0;
+  virtual void cancelTransfer()                       = 0;
+  virtual void processInput(const QByteArray& data)   = 0;
+  [[nodiscard]] virtual bool isActive() const         = 0;
 };
 
 }  // namespace Protocols

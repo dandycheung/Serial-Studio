@@ -33,48 +33,27 @@
 //--------------------------------------------------------------------------------------------------
 
 /**
- * @brief Register all UART commands with the registry
+ * @brief Registers the UART line-settings commands (baud / parity / bits / flow).
  */
-void API::Handlers::UARTHandler::registerCommands()
+void API::Handlers::UARTHandler::registerLineSettings(CommandRegistry& registry)
 {
-  auto& registry = CommandRegistry::instance();
+  static const QJsonArray kBaudRates = {110,
+                                        150,
+                                        300,
+                                        1200,
+                                        2400,
+                                        4800,
+                                        9600,
+                                        19200,
+                                        38400,
+                                        57600,
+                                        115200,
+                                        230400,
+                                        256000,
+                                        460800,
+                                        576000,
+                                        921600};
 
-  // Port selection
-  registry.registerCommand(QStringLiteral("io.driver.uart.setDevice"),
-                           QStringLiteral("Set serial port by device name (params: device)"),
-                           API::makeSchema({
-                             {QStringLiteral("device"),
-                              QStringLiteral("string"),
-                              QStringLiteral("Device path (e.g. COM3, /dev/ttyUSB0)")}
-  }),
-                           &setDevice);
-
-  registry.registerCommand(
-    QStringLiteral("io.driver.uart.setPortIndex"),
-    QStringLiteral("Set serial port by index (params: portIndex)"),
-    API::makeSchema({API::rangeProp(QStringLiteral("portIndex"),
-                                    QStringLiteral("Serial port index (0-based)"),
-                                    0,
-                                    QJsonValue())}),
-    &setPortIndex);
-
-  // Line settings
-  const QJsonArray kBaudRates = {110,
-                                 150,
-                                 300,
-                                 1200,
-                                 2400,
-                                 4800,
-                                 9600,
-                                 19200,
-                                 38400,
-                                 57600,
-                                 115200,
-                                 230400,
-                                 256000,
-                                 460800,
-                                 576000,
-                                 921600};
   registry.registerCommand(
     QStringLiteral("io.driver.uart.setBaudRate"),
     QStringLiteral("Set baud rate (params: baudRate)"),
@@ -117,6 +96,35 @@ void API::Handlers::UARTHandler::registerCommands()
                      QJsonArray{0, 1, 2},
                      0)}),
     &setFlowControl);
+}
+
+/**
+ * @brief Register all UART commands with the registry
+ */
+void API::Handlers::UARTHandler::registerCommands()
+{
+  auto& registry = CommandRegistry::instance();
+
+  // Port selection
+  registry.registerCommand(QStringLiteral("io.driver.uart.setDevice"),
+                           QStringLiteral("Set serial port by device name (params: device)"),
+                           API::makeSchema({
+                             {QStringLiteral("device"),
+                              QStringLiteral("string"),
+                              QStringLiteral("Device path (e.g. COM3, /dev/ttyUSB0)")}
+  }),
+                           &setDevice);
+
+  registry.registerCommand(
+    QStringLiteral("io.driver.uart.setPortIndex"),
+    QStringLiteral("Set serial port by index (params: portIndex)"),
+    API::makeSchema({API::rangeProp(QStringLiteral("portIndex"),
+                                    QStringLiteral("Serial port index (0-based)"),
+                                    0,
+                                    QJsonValue())}),
+    &setPortIndex);
+
+  registerLineSettings(registry);
 
   // Signals + reconnect
   registry.registerCommand(QStringLiteral("io.driver.uart.setDtrEnabled"),

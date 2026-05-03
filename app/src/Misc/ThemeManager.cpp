@@ -41,13 +41,6 @@
 
 /**
  * @brief Converts a QJsonObject to a QVariantMap.
- *
- * Iterates over all key-value pairs in the input QJsonObject and
- * inserts them into a QVariantMap.
- *
- * @param obj The QJsonObject to convert.
- * @return A QVariantMap with the same keys as the input object and
- *         QVariant-converted values.
  */
 static QVariantMap jsonObjectToVariantMap(const QJsonObject& obj)
 {

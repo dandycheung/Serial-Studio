@@ -621,11 +621,7 @@ API::CommandResponse API::Handlers::ProjectHandler::groupDuplicate(const QString
 }
 
 /**
- * @brief Select a group by id so subsequent mutations target it.
- *
- * ProjectModel's delete/duplicate operations act on @c m_selectedGroup. The
- * editor UI keeps this in sync via tree selection; over the API we need to
- * set it explicitly before calling group.delete / group.duplicate.
+ * @brief Select a group by id so subsequent group.delete / group.duplicate target it.
  */
 API::CommandResponse API::Handlers::ProjectHandler::groupSelect(const QString& id,
                                                                 const QJsonObject& params)

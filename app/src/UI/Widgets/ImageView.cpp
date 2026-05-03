@@ -34,15 +34,13 @@
 // Image format magic bytes
 //--------------------------------------------------------------------------------------------------
 
-namespace {
-const QByteArray kJpegStart("\xFF\xD8\xFF", 3);
-const QByteArray kPngStart("\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8);
-const QByteArray kBmpStart("BM", 2);
-const QByteArray kWebpStart("RIFF", 4);
-const QByteArray kJpegEnd("\xFF\xD9", 2);
-const QByteArray kPngEnd("\x49\x45\x4E\x44\xAE\x42\x60\x82", 8);
-constexpr quint32 kMaxImageSize = 64 * 1024 * 1024;
-}  // namespace
+static const QByteArray kJpegStart("\xFF\xD8\xFF", 3);
+static const QByteArray kPngStart("\x89\x50\x4E\x47\x0D\x0A\x1A\x0A", 8);
+static const QByteArray kBmpStart("BM", 2);
+static const QByteArray kWebpStart("RIFF", 4);
+static const QByteArray kJpegEnd("\xFF\xD9", 2);
+static const QByteArray kPngEnd("\x49\x45\x4E\x44\xAE\x42\x60\x82", 8);
+static constexpr quint32 kMaxImageSize = 64 * 1024 * 1024;
 
 //--------------------------------------------------------------------------------------------------
 // ImageFrameReader

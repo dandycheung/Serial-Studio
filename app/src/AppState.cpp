@@ -109,9 +109,6 @@ void AppState::setupExternalConnections()
 
 /**
  * @brief Restores the last opened project file after all modules are wired up.
- *
- * Called by ModuleManager after all setupExternalConnections() calls so that
- * FrameBuilder and Dashboard signals are connected before the project fires.
  */
 void AppState::restoreLastProject()
 {

@@ -597,11 +597,7 @@ void Widgets::Waterfall::writeRow(const float* dbValues, int bins)
 }
 
 /**
- * @brief Writes a spectrum row at a specific image row without scrolling.
- *
- * Used by Campbell mode: the target row is computed from the bound dataset's
- * value (e.g. RPM) so the same Y position is overwritten when that value
- * recurs, building up a value-vs-frequency surface instead of a time history.
+ * @brief Writes a spectrum row at a specific image row without scrolling (Campbell-mode entry).
  */
 void Widgets::Waterfall::writeRowAt(int row, const float* dbValues, int bins)
 {

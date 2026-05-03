@@ -35,8 +35,6 @@
 #include <QDateTime>
 #include <QDir>
 
-namespace {
-
 /**
  * @brief Escapes a CSV field per RFC 4180, quoting only when special characters require it.
  */
@@ -53,8 +51,6 @@ static QString escapeCsvField(const QString& s)
   out.replace(QChar('"'), QStringLiteral("\"\""));
   return QStringLiteral("\"%1\"").arg(out);
 }
-
-}  // namespace
 
 //--------------------------------------------------------------------------------------------------
 // ExportWorker implementation

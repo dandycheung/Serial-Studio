@@ -25,12 +25,10 @@
 // Local helpers
 //--------------------------------------------------------------------------------------------------
 
-namespace {
-
 /**
  * @brief Reusable "accepts channel/title/subtitle strings" schema chunk.
  */
-[[nodiscard]] QJsonObject stringProp(const QString& description)
+[[nodiscard]] static QJsonObject stringProp(const QString& description)
 {
   QJsonObject p;
   p[QStringLiteral("type")]        = QStringLiteral("string");
@@ -41,7 +39,8 @@ namespace {
 /**
  * @brief Builds a schema object from a properties map and required-keys list.
  */
-[[nodiscard]] QJsonObject makeSchema(const QJsonObject& properties, const QJsonArray& required)
+[[nodiscard]] static QJsonObject makeSchema(const QJsonObject& properties,
+                                            const QJsonArray& required)
 {
   QJsonObject schema;
   schema[QStringLiteral("type")]       = QStringLiteral("object");
@@ -55,14 +54,15 @@ namespace {
 /**
  * @brief Reads channel, title, subtitle from params (all optional, default empty).
  */
-void readEventStrings(const QJsonObject& params, QString& channel, QString& title, QString& sub)
+static void readEventStrings(const QJsonObject& params,
+                             QString& channel,
+                             QString& title,
+                             QString& sub)
 {
   channel = params.value(QStringLiteral("channel")).toString();
   title   = params.value(QStringLiteral("title")).toString();
   sub     = params.value(QStringLiteral("subtitle")).toString();
 }
-
-}  // anonymous namespace
 
 //--------------------------------------------------------------------------------------------------
 // Command registration

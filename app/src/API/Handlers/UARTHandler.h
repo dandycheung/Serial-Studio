@@ -24,6 +24,8 @@
 #include "API/CommandProtocol.h"
 
 namespace API {
+class CommandRegistry;
+
 namespace Handlers {
 /**
  * @brief Registers API commands for IO::Drivers::UART operations.
@@ -33,6 +35,8 @@ public:
   static void registerCommands();
 
 private:
+  static void registerLineSettings(CommandRegistry& registry);
+
   static CommandResponse setDevice(const QString& id, const QJsonObject& params);
   static CommandResponse setPortIndex(const QString& id, const QJsonObject& params);
   static CommandResponse setBaudRate(const QString& id, const QJsonObject& params);

@@ -532,7 +532,7 @@ Item {
     }
 
     //
-    // Block pan and zoom, we do it manually
+    // Disable built-in pan/zoom; root drives both manually
     //
     zoomAreaEnabled: false
     enabled: root.mouseAreaEnabled

@@ -461,12 +461,10 @@ void DataModel::NotificationCenter::appendEvent(Event&& e)
 // Script-API injection helpers (Lua + JS)
 //--------------------------------------------------------------------------------------------------
 
-namespace {
-
 /**
  * @brief Returns true when the current runtime has a valid Pro-or-higher license.
  */
-[[nodiscard]] bool isProTierActive()
+[[nodiscard]] static bool isProTierActive()
 {
 #ifdef BUILD_COMMERCIAL
   const auto& tk = Licensing::CommercialToken::current();
@@ -483,7 +481,8 @@ namespace {
  * overloads (relative to baseIdx): 1 -> (title); 2 -> (title, subtitle);
  * 3 -> (channel, title, subtitle). The default channel is "Dashboard".
  */
-void resolveLuaArgs(lua_State* L, int baseIdx, QString& channel, QString& title, QString& subtitle)
+static void resolveLuaArgs(
+  lua_State* L, int baseIdx, QString& channel, QString& title, QString& subtitle)
 {
   const int total  = lua_gettop(L);
   const int remain = total - (baseIdx - 1);
@@ -506,7 +505,7 @@ void resolveLuaArgs(lua_State* L, int baseIdx, QString& channel, QString& title,
 /**
  * @brief Lua C closure that posts a notification event by level integer.
  */
-int luaNotify(lua_State* L)
+static int luaNotify(lua_State* L)
 {
   const int level = static_cast<int>(luaL_checkinteger(L, 1));
   QString channel;
@@ -521,7 +520,7 @@ int luaNotify(lua_State* L)
 /**
  * @brief Lua C closure that posts an Info-level notification.
  */
-int luaNotifyInfo(lua_State* L)
+static int luaNotifyInfo(lua_State* L)
 {
   QString channel;
   QString title;
@@ -535,7 +534,7 @@ int luaNotifyInfo(lua_State* L)
 /**
  * @brief Lua C closure that posts a Warning-level notification.
  */
-int luaNotifyWarning(lua_State* L)
+static int luaNotifyWarning(lua_State* L)
 {
   QString channel;
   QString title;
@@ -549,7 +548,7 @@ int luaNotifyWarning(lua_State* L)
 /**
  * @brief Lua C closure that posts a Critical-level notification.
  */
-int luaNotifyCritical(lua_State* L)
+static int luaNotifyCritical(lua_State* L)
 {
   QString channel;
   QString title;
@@ -563,7 +562,7 @@ int luaNotifyCritical(lua_State* L)
 /**
  * @brief Lua C closure that emits a companion "resolved" Info event.
  */
-int luaNotifyClear(lua_State* L)
+static int luaNotifyClear(lua_State* L)
 {
   QString channel;
   QString title;
@@ -577,14 +576,12 @@ int luaNotifyClear(lua_State* L)
 /**
  * @brief Lua C closure used as the stub when Pro tier is not active.
  */
-int luaNotifyStub(lua_State* L)
+static int luaNotifyStub(lua_State* L)
 {
   return luaL_error(L,
                     "notify() requires a Pro license. "
                     "See https://serial-studio.com/pricing");
 }
-
-}  // anonymous namespace
 
 /**
  * @brief Installs notify* globals + Info/Warning/Critical constants into a Lua state.

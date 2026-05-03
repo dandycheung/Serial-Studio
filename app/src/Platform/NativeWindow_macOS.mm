@@ -176,12 +176,6 @@ static void applyMacOSWindowStyleToNSWindow(NSWindow *w)
 
 /**
  * @brief Applies native window customization for macOS.
- *
- * This is a helper function that applies the actual native window styling.
- * It's called both when initially adding a window and when re-applying
- * customization after full screen mode exit.
- *
- * @param win The QWindow to customize.
  */
 static void applyMacOSWindowStyle(QWindow *win)
 {

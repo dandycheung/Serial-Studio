@@ -103,7 +103,7 @@ Item {
     target: Cpp_Notifications
 
     function onNotificationPosted(event) {
-      // Track whether user was viewing the tail before we append
+      // Capture tail-anchored state before the append shifts contentY
       const wasAtTail = listView.atYEnd || listView.count === 0
 
       notifications.append(event)

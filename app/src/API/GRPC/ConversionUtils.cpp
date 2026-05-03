@@ -16,10 +16,7 @@
 //--------------------------------------------------------------------------------------------------
 
 /**
- * @brief Converts a QJsonObject to a google.protobuf.Struct.
- *
- * Iterates over all keys in the JSON object and converts each value
- * recursively using toProtoValue(). Depth-bounded to prevent stack overflow.
+ * @brief Converts a QJsonObject to a google.protobuf.Struct (depth-bounded recursion).
  */
 google::protobuf::Struct API::GRPC::ConversionUtils::toProtoStruct(const QJsonObject& json,
                                                                    int depth)
@@ -98,10 +95,7 @@ google::protobuf::Value API::GRPC::ConversionUtils::toProtoValue(const QJsonValu
 //--------------------------------------------------------------------------------------------------
 
 /**
- * @brief Converts a google.protobuf.Struct to a QJsonObject.
- *
- * Iterates over all fields in the Struct and converts each value
- * recursively using toQJsonValue().
+ * @brief Converts a google.protobuf.Struct to a QJsonObject (depth-bounded recursion).
  */
 QJsonObject API::GRPC::ConversionUtils::toQJsonObject(const google::protobuf::Struct& proto,
                                                       int depth)
@@ -162,12 +156,10 @@ QJsonValue API::GRPC::ConversionUtils::toQJsonValue(const google::protobuf::Valu
 // Frame -> google.protobuf.Struct (fast path, no QJsonObject intermediary)
 //--------------------------------------------------------------------------------------------------
 
-namespace {
-
 /**
  * @brief Sets a string field on a protobuf Struct.
  */
-inline void setString(google::protobuf::Struct& s, const char* key, const QString& val)
+static inline void setString(google::protobuf::Struct& s, const char* key, const QString& val)
 {
   (*s.mutable_fields())[key].set_string_value(val.toStdString());
 }
@@ -175,12 +167,10 @@ inline void setString(google::protobuf::Struct& s, const char* key, const QStrin
 /**
  * @brief Sets a double field on a protobuf Struct.
  */
-inline void setNumber(google::protobuf::Struct& s, const char* key, double val)
+static inline void setNumber(google::protobuf::Struct& s, const char* key, double val)
 {
   (*s.mutable_fields())[key].set_number_value(val);
 }
-
-}  // namespace
 
 /**
  * @brief Converts a Frame directly to a protobuf Struct.

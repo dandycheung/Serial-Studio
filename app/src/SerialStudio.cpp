@@ -876,14 +876,13 @@ QString SerialStudio::escapeControlCharacters(const QString& str)
 // Text encoding helpers
 //--------------------------------------------------------------------------------------------------
 
-namespace {
 /**
  * @brief Returns the QStringConverter encoding for natively-supported entries.
  *
  * Returns `std::nullopt` for encodings that must go through QTextCodec
  * (GBK, GB18030, Big5, Shift_JIS, EUC-JP, EUC-KR).
  */
-std::optional<QStringConverter::Encoding> nativeEncoding(SerialStudio::TextEncoding enc)
+static std::optional<QStringConverter::Encoding> nativeEncoding(SerialStudio::TextEncoding enc)
 {
   switch (enc) {
     case SerialStudio::EncUtf8:
@@ -907,7 +906,7 @@ std::optional<QStringConverter::Encoding> nativeEncoding(SerialStudio::TextEncod
  * The codec is owned by Qt and must not be deleted.  Returns the UTF-8 codec
  * as a safe fallback if the requested codec is unavailable in this build.
  */
-QTextCodec* legacyCodec(SerialStudio::TextEncoding enc)
+static QTextCodec* legacyCodec(SerialStudio::TextEncoding enc)
 {
   // Map the enum to a canonical codec name
   const char* name = nullptr;
@@ -942,7 +941,6 @@ QTextCodec* legacyCodec(SerialStudio::TextEncoding enc)
   Q_ASSERT(codec != nullptr);
   return codec;
 }
-}  // namespace
 
 /**
  * @brief Returns the display labels for all supported text encodings.

@@ -1643,6 +1643,7 @@ _ADVISORY_KINDS = frozenset({
     # error once the report-driven cleanup catches up.
     "cxx-function-too-long",
     "cxx-nesting-too-deep",
+    "cxx-anonymous-namespace",
     "qt-missing-nodiscard",
     "doc-missing-brief-cpp",
     "doc-missing-brief-h",
@@ -1660,6 +1661,17 @@ _ADVISORY_KINDS = frozenset({
     "ai-todo-no-context",
     "multi-line-comment",
     "qml-inline-comment",
+    # comment-narration is the AST-style scan from code_verify_rules.py
+    # (separate driver). Banned tone / phrasing in any comment line.
+    "comment-narration",
+    # Function doxygen blocks above member-function declarations in headers
+    # -- forbidden by CLAUDE.md, but the existing codebase has hundreds
+    # so it ships as advisory.
+    "doc-header-function-block",
+    # Trailing doxygen `/**< ... */` member comments -- same ban, separate
+    # signal because the fix is "delete the trailing block" rather than
+    # "delete the leading block".
+    "doc-trailing-member",
 })
 
 
@@ -1760,6 +1772,9 @@ the kinds below are short labels.
 **Advisories (don't block CI):**
 - `cxx-function-too-long` — function body > 100 lines (NASA P10 rule 4).
 - `cxx-nesting-too-deep` — control-flow nesting > 3 levels (CLAUDE.md).
+- `cxx-anonymous-namespace` — helpers/types/variables defined inside
+  `namespace { ... }`. See "Anonymous-namespace helpers" below for why
+  this is a problem and what the alternatives are.
 - `qt-missing-nodiscard` — non-void const member function in a header
   without `[[nodiscard]]`.
 - `doc-missing-brief-cpp` — `.cpp` function definition without a
@@ -1768,6 +1783,127 @@ the kinds below are short labels.
   struct / enum / typedef / using-alias) without `/** @brief ... */`.
 - `keys-hardcoded-literal` — raw `"busType"` / `"frameStart"` / etc.
   literal in a writer or reader; use `Keys::*` from `Frame.h`.
+- `comment-narration` — banned tone or phrasing in a comment line,
+  per CLAUDE.md "Comments & Doxygen" (tutorial voice "we"/"let's",
+  "This is a function/class that...", throat-clearing "Note that"/"FYI",
+  caller references "Used by"/"Called from", rot references "this PR"/
+  "see below", restating "Iterates over"/"Loops over", hedging "for now"/
+  "ideally", filler "simply"/"basically"). Vendored / upstream-prose
+  files (`ThirdParty/`, `SimpleCrypt`, `lemonsqueezy/`) are exempt.
+  `@brief` lines are also exempt to keep false-positives low.
+
+## Anonymous-namespace helpers (`cxx-anonymous-namespace`)
+
+An anonymous namespace (`namespace { ... }` in a `.cpp`) gives every
+symbol it contains internal linkage. That part is fine. The problem is
+everything else it does on top:
+
+- **Hard to trace.** `grep -rn "myHelper"` finds the call sites but not
+  the definition unless you already know which `.cpp` to open. There is
+  no qualified name, no `Foo::myHelper`, nothing the IDE's "Go to
+  Definition" can latch onto without a working compile_commands.json.
+- **Invisible in stack traces.** Mangled names from anonymous namespaces
+  look like `(anonymous namespace)::myHelper(int)` — readable, but the
+  symbol carries no clue which translation unit it lives in. Two helpers
+  named `parse()` in two different `.cpp` files both surface the same
+  way.
+- **Hostile to doxygen, code search, and call-hierarchy tooling.**
+  Doxygen filters anonymous-namespace symbols out of most graphs by
+  default. IDE call-hierarchy views often skip them. Code-search
+  indexers like Sourcegraph and OpenGrok give them weak cross-references.
+- **Encourages drift.** "It's only used in this file" is true today;
+  six months later somebody copies the helper into a second `.cpp`
+  because they couldn't find the original, and now there are two
+  divergent definitions of the same helper.
+- **Confuses LLMs (and humans).** When you ask an assistant to "find
+  the helper that does X", it has to read every `.cpp` to find the
+  unnamed-namespace block. Named statics or detail namespaces are
+  searchable by name.
+
+**Alternatives, ordered by preference:**
+
+The default in this codebase is **class-private static**. The reader's
+mental model of a class comes from glancing at its header — every
+helper that exists should show up there, even if its body lives in the
+`.cpp`. A helper hidden in an anonymous namespace is a helper the
+class's API does not advertise, which means the next person reading
+the header gets an incomplete picture of how the class actually works.
+
+1. **Class-private static method (default).** Almost every "helper in
+   an anonymous namespace" should be a `private: static` on the class
+   it serves. The header shows the full set of moving parts, the IDE
+   outline lists the helper next to the public API, and the symbol
+   carries a qualified name (`Dashboard::tickRepeatTimer`) that grep,
+   stack traces, and doxygen all surface cleanly.
+
+   ```cpp
+   class Dashboard {
+   private:
+     static int tickRepeatTimer(int index,
+                                QMap<int, QTimer*>& timers,
+                                QMap<int, int>& counters);
+   };
+   ```
+
+2. **`static` at file scope.** Use this when the helper genuinely has
+   no class to belong to — e.g. a small pure function used by free
+   functions in the same `.cpp`. Same linkage guarantee as the
+   anonymous namespace, but the symbol has a real name and lives at
+   the top of the file where readers expect it. If you are reaching
+   for this and the helper takes a class instance as its first
+   argument, stop and prefer option 1 instead.
+
+   ```cpp
+   // Good: file-scope static, easy to grep, clear ownership.
+   static int clampToRange(int value, int lo, int hi);
+   ```
+
+3. **Named `detail` namespace.** Reserve this for translation-unit-
+   private *types* (a small POD payload, a tag struct, an `enum class`)
+   that are an implementation detail of free functions in the same
+   `.cpp`. Anonymous namespaces are sometimes used to give a type
+   internal linkage without macro tricks; a named `detail` namespace
+   has the same effect as long as the type is only declared in the
+   `.cpp`. If the type is owned by a class, prefer a private nested
+   type in the header instead.
+
+   ```cpp
+   // Good: type has a real qualified name (`detail::TickState`) and
+   // every grep, doxygen pass, and stack trace can find it.
+   namespace detail {
+   struct TickState {
+     int counter = 0;
+     QTimer* timer = nullptr;
+   };
+   }  // namespace detail
+   ```
+
+**When an anonymous namespace IS the right answer:** essentially never
+in this codebase. The classic justification ("template specializations
+need internal linkage") almost never applies; if you think it does,
+leave a one-line comment above the namespace explaining why and wrap
+the block in `// code-verify off` / `// code-verify on` so the rule
+stays quiet without being deleted.
+
+**Fix recipe for an LLM cleanup pass:**
+
+1. Open the flagged `.cpp` at the listed line.
+2. For each entity inside the anonymous namespace, decide:
+   - Helper that operates on a class (touches its members, takes one
+     of its instances, or only that class calls it) → **class-private
+     static** in the matching header. This is the default. Goal: the
+     header lists every helper a reader needs to understand the class.
+   - Free helper with no class affinity → `static` at file scope.
+   - Translation-unit-private type → `namespace detail { ... }` in
+     the `.cpp`, OR a private nested type in the header when the type
+     is owned by a class.
+3. Move the entity OUT of the anonymous-namespace block, applying the
+   chosen treatment. When promoting to a class-private static, declare
+   it in the header alongside the other private statics and keep the
+   definition in the `.cpp` (no need to inline).
+4. Delete the now-empty `namespace { }` block.
+5. The fix is mechanical and does not change behavior; verify with a
+   clean build.
 
 ## Opt-out
 

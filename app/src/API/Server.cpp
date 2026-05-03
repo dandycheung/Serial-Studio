@@ -1233,14 +1233,8 @@ void API::Server::onErrorOccurred(const QAbstractSocket::SocketError socketError
 }
 
 /**
- * @brief Clears socket buffers when a client disconnects.
- *
- * This version is called when the socket itself emits disconnected signal
- * (before being moved to worker thread).
- *
- * NOTE: Cannot safely access peerAddress()/peerPort() after disconnect signal,
- * as the connection information may already be invalid and cause crashes.
- * We use cached peer info from ConnectionState instead.
+ * @brief Clears socket buffers on disconnect, using cached peer info (post-disconnect peer is
+ * unsafe).
  */
 void API::Server::onSocketDisconnected()
 {

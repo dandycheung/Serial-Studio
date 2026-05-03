@@ -35,7 +35,7 @@
 // Placeholder-aware item delegate
 //--------------------------------------------------------------------------------------------------
 
-namespace {
+namespace detail {
 /**
  * @brief Item delegate that draws a placeholder string in cells whose value is empty.
  */
@@ -79,7 +79,9 @@ public:
 private:
   const QString* m_text;
 };
-}  // namespace
+}  // namespace detail
+
+using detail::PlaceholderDelegate;
 
 //--------------------------------------------------------------------------------------------------
 // Constructor & setup

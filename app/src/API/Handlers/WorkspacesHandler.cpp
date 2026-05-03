@@ -34,13 +34,11 @@
 // Local helpers
 //--------------------------------------------------------------------------------------------------
 
-namespace {
-
 /**
  * @brief Locates a workspace by id in ProjectModel's list.
  * @return Iterator; end() if not found.
  */
-[[nodiscard]] auto findWorkspace(const std::vector<DataModel::Workspace>& ws, int wid)
+[[nodiscard]] static auto findWorkspace(const std::vector<DataModel::Workspace>& ws, int wid)
 {
   return std::find_if(ws.begin(), ws.end(), [wid](const auto& w) { return w.workspaceId == wid; });
 }
@@ -48,7 +46,7 @@ namespace {
 /**
  * @brief Serialises a workspace's widget refs as a QJsonArray of objects.
  */
-[[nodiscard]] QJsonArray refsToJson(const std::vector<DataModel::WidgetRef>& refs)
+[[nodiscard]] static QJsonArray refsToJson(const std::vector<DataModel::WidgetRef>& refs)
 {
   QJsonArray arr;
   for (const auto& r : refs) {
@@ -61,8 +59,6 @@ namespace {
 
   return arr;
 }
-
-}  // anonymous namespace
 
 //--------------------------------------------------------------------------------------------------
 // Command registration

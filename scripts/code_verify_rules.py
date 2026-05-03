@@ -285,6 +285,7 @@ def _cpp_rules(src: bytes, path: Path, fence_mask: list[bool]) -> list[Finding]:
         doc-missing-brief-h      header type-level definition without /** @brief */
         hotpath-allocation       allocation/append on a known hotpath method
         keys-hardcoded-literal   raw "busType" etc. literal where Keys:: belongs
+        cxx-anonymous-namespace  helpers/types defined inside `namespace { ... }`
     """
     if not HAS_TREE_SITTER:
         return []
@@ -420,6 +421,121 @@ def _cpp_rules(src: bytes, path: Path, fence_mask: list[bool]) -> list[Finding]:
                                 abs_line, "hotpath-allocation",
                                 f"{msg} (in `{fname}`)"))
                             break
+
+    # ---- Anonymous-namespace helpers (.cpp only). Anonymous namespaces hide
+    # symbols from the linker but also from grep, doxygen, IDE call hierarchies,
+    # and any reader trying to trace where a helper lives. CLAUDE.md prefers
+    # named-namespace statics or class-private statics; flag every helper /
+    # variable / type defined inside `namespace { ... }`. Headers don't get
+    # this rule because anon namespaces in headers are a separate (worse) bug
+    # caught by other tools.
+    if not is_header:
+        for n in _walk(root):
+            if n.type != "namespace_definition":
+                continue
+            if not _is_anonymous_namespace(n):
+                continue
+            body = n.child_by_field_name("body")
+            if body is None:
+                continue
+            for child in body.children:
+                if child.type not in (
+                    "function_definition", "declaration", "template_declaration",
+                    "class_specifier", "struct_specifier", "enum_specifier",
+                    "type_definition", "alias_declaration", "union_specifier",
+                ):
+                    continue
+                line = _line_of(child)
+                if fenced(line):
+                    continue
+                label = _anon_member_label(child, src)
+                out.append(Finding(
+                    line, "cxx-anonymous-namespace",
+                    f"`{label}` defined inside an anonymous namespace -- "
+                    f"hard to trace; prefer a class-private `static` "
+                    f"(default), file-scope `static` for free helpers, or "
+                    f"a named `detail` namespace for TU-private types"))
+
+    # ---- Header-only: function doxygen blocks above non-type declarations.
+    # CLAUDE.md "Headers (.h) -- strict rule": the only block-doc allowed in
+    # a header is `/** @brief ... */` above a TYPE-LEVEL definition. Function
+    # doxygen blocks above member-function decls are explicitly forbidden
+    # ("No function doxygen, member-variable comments, signal/slot comments,
+    # @param/@return/@note/@see, or inline `//`. Names + types are the
+    # documentation."). The existing tools track type-level coverage; this
+    # check finds the opposite: blocks that should be deleted.
+    if is_header:
+        src_text2 = src.decode("utf-8", errors="replace")
+        lines2 = src_text2.split("\n")
+        for n in _walk(root):
+            if n.type != "field_declaration":
+                continue
+            line = _line_of(n)
+            if fenced(line):
+                continue
+            decl = n.child_by_field_name("declarator")
+            if decl is None:
+                continue
+            # Only complain when the declarator is a function declarator
+            # (we don't want to flag plain member-variable doxygen here --
+            # `qt-header-member-init` covers that for QObject classes, and
+            # POD config-bag fields are intentionally exempt).
+            if decl.type != "function_declarator":
+                continue
+            # Skip inline-defined methods -- those are function bodies, and
+            # the doc-missing-brief-cpp rule handles their doxygen.
+            #
+            # An inline-defined method's `field_declaration` carries its body
+            # as a `compound_statement` child of the function_declarator's
+            # parent. Detect by walking the field_declaration for any
+            # compound_statement descendant that's a body, not an init list.
+            has_body = False
+            for c in n.children:
+                if c.type == "function_definition":
+                    has_body = True
+                    break
+            if has_body:
+                continue
+            # Walk back from `line - 1` to find a closing `*/`. If found, find
+            # its matching `/**` and check whether the block is multi-line.
+            # A one-line `/** @brief ... */` block above a member function
+            # is also banned but we report it the same way -- the message
+            # tells the reader to delete the block.
+            cur = line - 2
+            skip = 0
+            while cur >= 0 and skip < 6:
+                s = lines2[cur].strip()
+                if (not s or s.startswith("//")
+                        or s.startswith("[[") or s.startswith("template")
+                        or s.startswith("requires")):
+                    cur -= 1
+                    skip += 1
+                    continue
+                break
+            if cur < 0:
+                continue
+            if not lines2[cur].rstrip().endswith("*/"):
+                continue
+            # Walk further back to find the opening `/**`.
+            open_idx = -1
+            for j in range(cur, max(0, cur - 60) - 1, -1):
+                if "/**" in lines2[j]:
+                    open_idx = j
+                    break
+            if open_idx < 0:
+                continue
+            block = "\n".join(lines2[open_idx:cur + 1])
+            # If the block is just `/** @brief ... */` on one line above a
+            # type-level def, the doc-missing-brief-h rule is happy. But
+            # if it's above a function declaration, CLAUDE.md still says it
+            # shouldn't be there. Report it with a kind that maps to advisory
+            # (heuristic only, broad existing-code debt).
+            out.append(Finding(
+                open_idx + 1, "doc-header-function-block",
+                "header function declaration carries a doxygen block -- "
+                "headers should hold ONLY @brief banners above type-level "
+                "definitions; delete the block (CLAUDE.md \"Headers (.h) -- "
+                "strict rule\")"))
 
     # ---- Header-only rules: in-header member init, @brief on type-level defs
     if is_header:
@@ -634,6 +750,40 @@ def _in_signals_section(node, src: bytes) -> bool:
     return False
 
 
+def _is_anonymous_namespace(node) -> bool:
+    """True when a namespace_definition has no name (`namespace { ... }`).
+    The grammar exposes the name as a `namespace_identifier` or
+    `nested_namespace_specifier` child; anonymous namespaces have neither."""
+    for child in node.children:
+        if child.type in ("namespace_identifier", "nested_namespace_specifier"):
+            return False
+    return True
+
+
+def _anon_member_label(node, src: bytes) -> str:
+    """Return a short human label for a top-level entity inside an anonymous
+    namespace -- function name, type name, or first declared identifier --
+    so the report can point at the actual symbol rather than just the line."""
+    if node.type == "function_definition":
+        name = _function_name(node, src)
+        return name if name else "<function>"
+    if node.type in ("class_specifier", "struct_specifier", "enum_specifier",
+                     "union_specifier", "type_definition", "alias_declaration"):
+        name = _type_name(node, src)
+        return name if name else "<type>"
+    if node.type == "template_declaration":
+        for child in node.children:
+            if child.type in ("function_definition", "class_specifier",
+                              "struct_specifier"):
+                return _anon_member_label(child, src)
+        return "<template>"
+    if node.type == "declaration":
+        for child in _walk(node):
+            if child.type in ("identifier", "field_identifier"):
+                return _node_text(child, src)
+    return "<entity>"
+
+
 # ---------------------------------------------------------------------------
 # Line-text helpers (string/comment stripping)
 # ---------------------------------------------------------------------------
@@ -674,6 +824,157 @@ def _camel(snake: str) -> str:
     constants in Frame.h are PascalCase versions of the camelCase JSON
     keys -- e.g. `frameStart` -> `FrameStart`."""
     return snake[:1].upper() + snake[1:]
+
+
+# ---------------------------------------------------------------------------
+# Comment-narration rule (CLAUDE.md "Comments & Doxygen" tone bans)
+# ---------------------------------------------------------------------------
+#
+# CLAUDE.md bans tutorial voice ("we", "let's"), throat-clearing ("Note that",
+# "FYI"), rot-references ("this PR", "the recent fix"), caller references
+# ("Used by X", "Called from Y"), hedging ("for now", "ideally"), and
+# tutorial-restating ("This is a function that...", "Iterates over..."). The
+# scanner runs over `//` line-comment text and ` * ` doxygen continuation
+# text; @brief lines are excluded (a one-liner @brief that mentions "we" is
+# rare but possible -- better than nuking 100% of legitimate phrasing).
+#
+# Third-party files keep their upstream prose unchanged. Detection by path
+# (`ThirdParty/`, the SimpleCrypt vendored crypto helper, the Lemon Squeezy
+# example template) avoids touching code we don't own.
+
+_NARRATION_PATTERNS = [
+    # Tutorial voice -- "we", "let's", "now we"
+    (re.compile(r"\b(?:we|let's|let us|now we|first we)\b", re.IGNORECASE),
+     "tutorial voice (`we`/`let's`) -- rewrite without the first person"),
+    # "This is a helper / function / class that..."
+    (re.compile(
+        r"\bThis is a (?:helper |small |simple |utility )?"
+        r"(?:function|class|method|variable|helper|piece of code|wrapper|macro)\b"),
+     "tutorial voice (`This is a function/class/...`) -- the code already says that"),
+    # Throat-clearing prefixes
+    (re.compile(r"\b(?:Note that|Please note|FYI)\b"),
+     "throat-clearing (`Note that`/`FYI`) -- drop the prefix or drop the comment"),
+    # Caller references
+    (re.compile(
+        r"\b(?:Used by|Called from|Called by|Invoked by|invoked from)\b"),
+     "caller-reference (`Used by`/`Called from`) -- those rot; if it's load-bearing, "
+     "encode it as an invariant in the function instead"),
+    # Rot-references (phrasing tied to a transient state)
+    (re.compile(
+        r"\b(?:this PR|recent fix|the recent (?:fix|change)|"
+        r"as mentioned above|see below|see above)\b", re.IGNORECASE),
+     "rot-reference (`this PR`/`see below`) -- moves the moment it ships; put context "
+     "in the commit message"),
+    # Restating the code
+    (re.compile(r"\b(?:Loops over|Iterates over|Iterate through)\b"),
+     "restating the code (`Loops over`/`Iterates over`) -- the loop already says that"),
+    # Hedging
+    (re.compile(
+        r"\b(?:For now,|for now,|For clarity,|for clarity,|ideally,)\b"),
+     "hedging (`for now`/`ideally`) -- be definite or delete"),
+    # Filler adverbs
+    (re.compile(r"\b(?:simply|basically)\b", re.IGNORECASE),
+     "filler adverb (`simply`/`basically`) -- delete or rephrase"),
+]
+
+# Files whose prose is upstream and not authored by this codebase.
+_NARRATION_VENDORED_PATH_HINTS = (
+    "/ThirdParty/",
+    "/lemonsqueezy/",  # Pro license-server example template
+    "/SimpleCrypt.",   # Andre Somers' vendored crypto helper
+)
+
+
+def _is_brief_line(text: str) -> bool:
+    """True when this comment line carries the doxygen `@brief` marker.
+
+    A one-line `@brief` that happens to contain a banned word is rare but
+    legitimate (e.g., the @brief of a `sharedDatasetUnit` helper that returns
+    "the unit shared by all datasets, or empty when they disagree" — the
+    word `they` could trip a future tutorial-voice check). Excluding @brief
+    lines keeps the false-positive rate low without making the rule toothless.
+    """
+    return "@brief" in text
+
+
+def _is_vendored_path(path: Path) -> bool:
+    """True when @p path points to a vendored / upstream-prose file. The
+    check is path-based because vendored files don't carry a uniform marker
+    in their text -- some have an SPDX banner, some have a license comment,
+    some have neither."""
+    s = str(path)
+    return any(hint in s for hint in _NARRATION_VENDORED_PATH_HINTS)
+
+
+_TRAILING_DOXY_RE = re.compile(r"/\*\*<")
+
+
+def _trailing_doxy_findings(src_text: str, path: Path,
+                            fence_mask: list[bool]) -> list[Finding]:
+    """Flag trailing-style doxygen `/**< ... */` member comments in headers.
+
+    CLAUDE.md "Headers (.h) -- strict rule" forbids member-variable
+    comments. Trailing `/**< description */` is the doxygen-specific form
+    of that ban -- the underlying problem is the same: names + types are
+    the documentation.
+    """
+    if path.suffix not in (".h", ".hpp", ".hxx"):
+        return []
+    if _is_vendored_path(path):
+        return []
+    out: list[Finding] = []
+    for i, raw in enumerate(src_text.split("\n"), start=1):
+        if i - 1 < len(fence_mask) and fence_mask[i - 1]:
+            continue
+        if _TRAILING_DOXY_RE.search(raw):
+            out.append(Finding(
+                i, "doc-trailing-member",
+                "header member-variable trailing doxygen `/**< ... */` -- "
+                "delete it (CLAUDE.md \"No member-variable comments\" rule)"))
+    return out
+
+
+def _comment_narration_findings(src_text: str, path: Path,
+                                fence_mask: list[bool]) -> list[Finding]:
+    """Scan comment text in @p src_text and emit one finding per banned pattern.
+
+    Walks every line: `// ...` line comments contribute their tail text, and
+    ` * ...` lines inside a doxygen / block comment contribute their body
+    (minus the leading `*`). String literals and code outside comments are
+    not visited. @brief lines are skipped.
+    """
+    if _is_vendored_path(path):
+        return []
+
+    out: list[Finding] = []
+    lines = src_text.split("\n")
+    for i, raw in enumerate(lines, start=1):
+        if i - 1 < len(fence_mask) and fence_mask[i - 1]:
+            continue
+
+        # `//` line comment -- everything after the marker is prose.
+        m_line = re.search(r"//(.*)$", raw)
+        # ` * ` doxygen continuation -- a line starting with whitespace + `*`
+        # but NOT starting a `*/` close or a `/**` open is prose. The opener
+        # `/**` line itself often contains @brief and runs through the
+        # @brief filter below.
+        m_doxy = re.match(r"^\s*\*\s?(.*)$", raw)
+
+        if m_line:
+            text = m_line.group(1)
+        elif m_doxy and not m_doxy.group(1).startswith("/"):
+            text = m_doxy.group(1)
+        else:
+            continue
+
+        if _is_brief_line(text):
+            continue
+
+        for pat, msg in _NARRATION_PATTERNS:
+            if pat.search(text):
+                out.append(Finding(i, "comment-narration", msg))
+                break  # one finding per line is plenty
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -745,8 +1046,14 @@ def analyze(path: Path, src_text: str, fence_mask: list[bool]) -> list[Finding]:
     """Run every applicable rule against `src_text` for `path`. The driver
     in code-verify.py wraps each Finding as a Violation."""
     suffix = path.suffix.lower()
+    out: list[Finding] = []
     if suffix in (".cpp", ".cc", ".cxx", ".c", ".h", ".hpp", ".hxx", ".mm"):
-        return _cpp_rules(src_text.encode("utf-8"), path, fence_mask)
+        out.extend(_cpp_rules(src_text.encode("utf-8"), path, fence_mask))
+        out.extend(_comment_narration_findings(src_text, path, fence_mask))
+        out.extend(_trailing_doxy_findings(src_text, path, fence_mask))
+        return out
     if suffix == ".qml":
-        return _qml_rules(src_text, path, fence_mask)
-    return []
+        out.extend(_qml_rules(src_text, path, fence_mask))
+        out.extend(_comment_narration_findings(src_text, path, fence_mask))
+        return out
+    return out

@@ -29,12 +29,10 @@
 
 #include "Misc/Translator.h"
 
-namespace {
-
 /**
  * @brief Maps a Misc::Translator::Language enum to its IETF locale key.
  */
-QString localeKeyForLanguage(const Misc::Translator::Language language)
+static QString localeKeyForLanguage(const Misc::Translator::Language language)
 {
   switch (language) {
     case Misc::Translator::Spanish:
@@ -76,8 +74,6 @@ QString localeKeyForLanguage(const Misc::Translator::Language language)
       return QStringLiteral("en_US");
   }
 }
-
-}  // namespace
 
 /**
  * @brief Reads a Qt resource file as UTF-8 text, or returns empty on failure.

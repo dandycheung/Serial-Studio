@@ -573,10 +573,6 @@ QString Misc::Examples::exampleCachePath(const QString& id) const
 
 /**
  * @brief Removes markdown image tags (![alt](url)) from the given text.
- *
- * Qt's TextArea.MarkdownText attempts to resolve image URLs relative to qrc,
- * which causes "Cannot read resource" warnings. We strip images server-side
- * and show them in a dedicated Image element instead.
  */
 QString Misc::Examples::stripMarkdownImages(const QString& markdown)
 {

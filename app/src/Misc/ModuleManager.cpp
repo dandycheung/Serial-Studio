@@ -304,12 +304,7 @@ void Misc::ModuleManager::onQuit()
 //--------------------------------------------------------------------------------------------------
 
 /**
- * @brief Sets default options for QSimpleUpdater (notify on update, no close).
- *
- * Sets the default options for QSimpleUpdater, which are:
- * - Notify user when a new update is found
- * - Do not notify user when we finish checking for updates
- * - Do not close application if update is found
+ * @brief Sets default options for QSimpleUpdater (notify on update, silent on no-update).
  */
 void Misc::ModuleManager::configureUpdater()
 {

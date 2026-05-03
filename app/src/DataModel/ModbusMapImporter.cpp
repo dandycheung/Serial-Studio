@@ -42,7 +42,7 @@
 // File-local helpers
 //--------------------------------------------------------------------------------------------------
 
-namespace {
+namespace detail {
 
 /**
  * @brief CSV header column indices auto-detected from the first row.
@@ -59,10 +59,14 @@ struct CsvColumnMap {
   int offset   = -1;
 };
 
+}  // namespace detail
+
+using detail::CsvColumnMap;
+
 /**
  * @brief Returns true if any of the literals matches the lowercase column name.
  */
-[[nodiscard]] bool matchAny(const QString& col, std::initializer_list<QLatin1String> options)
+[[nodiscard]] static bool matchAny(const QString& col, std::initializer_list<QLatin1String> options)
 {
   for (const auto& opt : options)
     if (col == opt)
@@ -74,7 +78,7 @@ struct CsvColumnMap {
 /**
  * @brief Maps a single header cell to its column-map slot.
  */
-void mapCsvHeaderColumn(const QString& col, int index, CsvColumnMap& map)
+static void mapCsvHeaderColumn(const QString& col, int index, CsvColumnMap& map)
 {
   if (matchAny(col,
                {QLatin1String("address"),
@@ -141,7 +145,7 @@ void mapCsvHeaderColumn(const QString& col, int index, CsvColumnMap& map)
 /**
  * @brief Builds the CSV column-map by inspecting the header row.
  */
-[[nodiscard]] CsvColumnMap buildCsvColumnMap(const QStringList& header)
+[[nodiscard]] static CsvColumnMap buildCsvColumnMap(const QStringList& header)
 {
   CsvColumnMap map;
   for (int i = 0; i < header.count(); ++i) {
@@ -155,7 +159,7 @@ void mapCsvHeaderColumn(const QString& col, int index, CsvColumnMap& map)
 /**
  * @brief Returns the trimmed/unquoted value at column index, or fallback when out of range.
  */
-[[nodiscard]] QString csvCell(const QStringList& cols, int colIndex, const QString& fallback)
+[[nodiscard]] static QString csvCell(const QStringList& cols, int colIndex, const QString& fallback)
 {
   if (colIndex < 0 || colIndex >= cols.count())
     return fallback;
@@ -166,7 +170,7 @@ void mapCsvHeaderColumn(const QString& col, int index, CsvColumnMap& map)
 /**
  * @brief Returns a numeric cell value, falling back when missing or empty.
  */
-[[nodiscard]] double csvCellDouble(const QStringList& cols, int colIndex, double fallback)
+[[nodiscard]] static double csvCellDouble(const QStringList& cols, int colIndex, double fallback)
 {
   if (colIndex < 0 || colIndex >= cols.count())
     return fallback;
@@ -181,7 +185,7 @@ void mapCsvHeaderColumn(const QString& col, int index, CsvColumnMap& map)
 /**
  * @brief Maps an XML container tag name to a register-type index, or -1 if not a container.
  */
-[[nodiscard]] int xmlTagToType(const QString& tag)
+[[nodiscard]] static int xmlTagToType(const QString& tag)
 {
   if (tag == QLatin1String("holding-registers") || tag == QLatin1String("holdingregisters")
       || tag == QLatin1String("holding"))
@@ -200,8 +204,6 @@ void mapCsvHeaderColumn(const QString& col, int index, CsvColumnMap& map)
 
   return -1;
 }
-
-}  // namespace
 
 //--------------------------------------------------------------------------------------------------
 // Constructor & singleton access

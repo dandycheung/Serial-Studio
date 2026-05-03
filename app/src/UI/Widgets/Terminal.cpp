@@ -1079,22 +1079,6 @@ QPoint Widgets::Terminal::positionToCursor(const QPoint& pos) const
 
 /**
  * @brief Copies the currently selected text to the system clipboard.
- *
- * This function copies the currently selected text from the terminal buffer
- * to the system clipboard, ensuring the correct order of the start and end
- * points of the selection:
- * - If no valid selection is available (`copyAvailable()` returns true), the
- *   function returns without action.
- * - The correct selection boundaries are determined and adjusted if needed.
- * - Iterates over the selected lines and extracts the corresponding text,
- *   preserving line breaks.
- * - Copies the extracted text to the system clipboard for use in other
- *   applications.
- *
- * @note The copied text includes line breaks between lines to preserve
- * formatting.
- *
- * @see copyAvailable(), QClipboard, QGuiApplication::clipboard()
  */
 void Widgets::Terminal::copy()
 {
@@ -2039,16 +2023,7 @@ void Widgets::Terminal::handleCsiDecPrivateMode(const QChar& byte)
 }
 
 /**
- * @brief Processes a reset font command in the terminal's state machine.
- *
- * @param byte The character to be processed (unused in this method).
- * @param text A reference to a QString (unused in this method).
- *
- * This method simply resets the terminal's state back to `Text`, ending any
- * font reset operations. This is typically used to handle the completion of
- * a font reset escape sequence.
- *
- * @see m_state
+ * @brief Processes a reset-font terminator and returns the state machine to Text.
  */
 void Widgets::Terminal::processResetFont(const QChar& byte, QString& text)
 {

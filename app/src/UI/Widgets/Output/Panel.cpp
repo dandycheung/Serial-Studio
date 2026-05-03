@@ -112,10 +112,6 @@ QVariantList Widgets::Output::Panel::geometry() const
 
 /**
  * @brief Recomputes layout geometry using the PanelLayout engine.
- * @param width Available width in pixels.
- * @param height Available height in pixels.
- *
- * Called from QML whenever the panel container size changes.
  */
 void Widgets::Output::Panel::updateLayout(qreal width, qreal height)
 {

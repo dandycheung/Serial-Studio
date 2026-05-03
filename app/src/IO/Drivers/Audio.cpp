@@ -1123,7 +1123,7 @@ void IO::Drivers::Audio::processInputBuffer()
     m_csvStream << '\n';
   }
 
-  // Flush and emit only the portion we actually wrote
+  // Flush and emit only the actual written portion
   m_csvStream.flush();
   const auto length = m_csvBuffer.pos();
   const auto frameStep =

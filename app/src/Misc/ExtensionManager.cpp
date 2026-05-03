@@ -46,11 +46,10 @@
 static const QString kDefaultRepoUrl =
   QStringLiteral("https://raw.githubusercontent.com/serial-studio/extensions/main/manifest.json");
 
-namespace {
 /**
  * @brief Picks the best matching platform override map for the given platform key.
  */
-QVariantMap selectPlatformOverride(const QVariantMap& platforms, const QString& platformKey)
+static QVariantMap selectPlatformOverride(const QVariantMap& platforms, const QString& platformKey)
 {
   if (platforms.isEmpty())
     return {};
@@ -68,7 +67,6 @@ QVariantMap selectPlatformOverride(const QVariantMap& platforms, const QString& 
 
   return {};
 }
-}  // namespace
 
 //--------------------------------------------------------------------------------------------------
 // Constructor & singleton access functions
